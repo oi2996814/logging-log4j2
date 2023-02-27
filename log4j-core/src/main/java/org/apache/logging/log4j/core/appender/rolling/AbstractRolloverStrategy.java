@@ -34,6 +34,7 @@ import org.apache.logging.log4j.core.appender.rolling.action.Action;
 import org.apache.logging.log4j.core.appender.rolling.action.CompositeAction;
 import org.apache.logging.log4j.core.lookup.StrSubstitutor;
 import org.apache.logging.log4j.core.pattern.NotANumber;
+import org.apache.logging.log4j.core.util.Integers;
 import org.apache.logging.log4j.status.StatusLogger;
 
 /**
@@ -130,7 +131,7 @@ public abstract class AbstractRolloverStrategy implements RolloverStrategy {
         }
         // since we insert a pattern inside a regex escaped string,
         // surround it with quote characters so that (\d) is treated as a pattern and not a literal
-        final String filePattern = fileName.replaceFirst("0?\\u0000", "\\\\E(0?\\\\d+)\\\\Q");
+        final String filePattern = fileName.replaceFirst("0*\\u0000", "\\\\E(0?\\\\d+)\\\\Q");
         final Pattern pattern = Pattern.compile(filePattern);
         final Path current = currentFile.length() > 0 ? new File(currentFile).toPath() : null;
         LOGGER.debug("Current file: {}", currentFile);
@@ -140,7 +141,7 @@ public abstract class AbstractRolloverStrategy implements RolloverStrategy {
                 final Matcher matcher = pattern.matcher(entry.toFile().getName());
                 if (matcher.matches() && !entry.equals(current)) {
                     try {
-                        final Integer index = Integer.parseInt(matcher.group(1));
+                        final Integer index = Integers.parseInt(matcher.group(1));
                         eligibleFiles.put(index, entry);
                     } catch (NumberFormatException ex) {
                         LOGGER.debug("Ignoring file {} which matches pattern but the index is invalid.",

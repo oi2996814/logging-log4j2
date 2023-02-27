@@ -49,6 +49,8 @@ import org.apache.logging.log4j.core.appender.ConsoleAppender;
 import org.apache.logging.log4j.core.async.AsyncLoggerConfig;
 import org.apache.logging.log4j.core.async.AsyncLoggerConfigDelegate;
 import org.apache.logging.log4j.core.async.AsyncLoggerConfigDisruptor;
+import org.apache.logging.log4j.core.async.AsyncWaitStrategyFactory;
+import org.apache.logging.log4j.core.async.AsyncWaitStrategyFactoryConfig;
 import org.apache.logging.log4j.core.config.arbiters.Arbiter;
 import org.apache.logging.log4j.core.config.arbiters.SelectArbiter;
 import org.apache.logging.log4j.core.config.plugins.util.PluginBuilder;
@@ -112,7 +114,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
     /**
      * Shutdown timeout in milliseconds.
      */
-    protected long shutdownTimeoutMillis = 0;
+    protected long shutdownTimeoutMillis;
 
     /**
      * The Script manager.
@@ -123,22 +125,23 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      * The Advertiser which exposes appender configurations to external systems.
      */
     private Advertiser advertiser = new DefaultAdvertiser();
-    private Node advertiserNode = null;
+    private Node advertiserNode;
     private Object advertisement;
     private String name;
     private ConcurrentMap<String, Appender> appenders = new ConcurrentHashMap<>();
     private ConcurrentMap<String, LoggerConfig> loggerConfigs = new ConcurrentHashMap<>();
     private List<CustomLevelConfig> customLevels = Collections.emptyList();
     private final ConcurrentMap<String, String> propertyMap = new ConcurrentHashMap<>();
-    private final StrLookup tempLookup = new Interpolator(propertyMap);
-    private final StrSubstitutor subst = new RuntimeStrSubstitutor(tempLookup);
-    private final StrSubstitutor configurationStrSubstitutor = new ConfigurationStrSubstitutor(subst);
+    private final Interpolator tempLookup = new Interpolator(propertyMap);
+    private final StrSubstitutor runtimeStrSubstitutor = new RuntimeStrSubstitutor(tempLookup);
+    private final StrSubstitutor configurationStrSubstitutor = new ConfigurationStrSubstitutor(runtimeStrSubstitutor);
     private LoggerConfig root = new LoggerConfig();
     private final ConcurrentMap<String, Object> componentMap = new ConcurrentHashMap<>();
     private final ConfigurationSource configurationSource;
     private final ConfigurationScheduler configurationScheduler = new ConfigurationScheduler();
     private final WatchManager watchManager = new WatchManager(configurationScheduler);
     private AsyncLoggerConfigDisruptor asyncLoggerConfigDisruptor;
+    private AsyncWaitStrategyFactory asyncWaitStrategyFactory;
     private NanoClock nanoClock = new DummyNanoClock();
     private final WeakReference<LoggerContext> loggerContext;
 
@@ -147,6 +150,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
      */
     protected AbstractConfiguration(final LoggerContext loggerContext, final ConfigurationSource configurationSource) {
         this.loggerContext = new WeakReference<>(loggerContext);
+        tempLookup.setLoggerContext(loggerContext);
         // The loggerContext is null for the NullConfiguration class.
         // this.loggerContext = new WeakReference(Objects.requireNonNull(loggerContext, "loggerContext is null"));
         this.configurationSource = Objects.requireNonNull(configurationSource, "configurationSource is null");
@@ -154,7 +158,6 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         pluginManager = new PluginManager(Node.CATEGORY);
         rootNode = new Node();
         setState(State.INITIALIZING);
-
     }
 
     @Override
@@ -208,9 +211,14 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         // lazily instantiate only when requested by AsyncLoggers:
         // loading AsyncLoggerConfigDisruptor requires LMAX Disruptor jar on classpath
         if (asyncLoggerConfigDisruptor == null) {
-            asyncLoggerConfigDisruptor = new AsyncLoggerConfigDisruptor();
+            asyncLoggerConfigDisruptor = new AsyncLoggerConfigDisruptor(asyncWaitStrategyFactory);
         }
         return asyncLoggerConfigDisruptor;
+    }
+
+    @Override
+    public AsyncWaitStrategyFactory getAsyncWaitStrategyFactory() {
+        return asyncWaitStrategyFactory;
     }
 
     /**
@@ -219,13 +227,16 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
     @Override
     public void initialize() {
         LOGGER.debug(Version.getProductString() + " initializing configuration {}", this);
-        subst.setConfiguration(this);
+        runtimeStrSubstitutor.setConfiguration(this);
         configurationStrSubstitutor.setConfiguration(this);
-        try {
-            scriptManager = new ScriptManager(this, watchManager);
-        } catch (final LinkageError | Exception e) {
-            // LOG4J2-1920 ScriptEngineManager is not available in Android
-            LOGGER.info("Cannot initialize scripting support because this JRE does not support it.", e);
+        String scriptLanguages = PropertiesUtil.getProperties().getStringProperty(Constants.SCRIPT_LANGUAGES);
+        if (scriptLanguages != null) {
+            try {
+                scriptManager = new ScriptManager(this, watchManager, scriptLanguages);
+            } catch (final LinkageError | Exception e) {
+                // LOG4J2-1920 ScriptEngineManager is not available in Android
+                LOGGER.info("Cannot initialize scripting support because this JRE does not support it.", e);
+            }
         }
         pluginManager.collectPlugins(pluginPackages);
         final PluginManager levelPlugins = new PluginManager(Level.CATEGORY);
@@ -251,7 +262,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     protected void initializeWatchers(Reconfigurable reconfigurable, ConfigurationSource configSource,
         int monitorIntervalSeconds) {
-        if (configSource.getFile() != null || configSource.getURL() != null) {
+        if (configSource != null && (configSource.getFile() != null || configSource.getURL() != null)) {
             if (monitorIntervalSeconds > 0) {
                 watchManager.setIntervalSeconds(monitorIntervalSeconds);
                 if (configSource.getFile() != null) {
@@ -271,19 +282,19 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
     }
 
     private void monitorSource(Reconfigurable reconfigurable, ConfigurationSource configSource) {
-		if (configSource.getLastModified() > 0) {
-			final Source cfgSource = new Source(configSource);
-			final Watcher watcher = WatcherFactory.getInstance(pluginPackages)
-				.newWatcher(cfgSource, this, reconfigurable, listeners, configSource.getLastModified());
-			if (watcher != null) {
-				watchManager.watch(cfgSource, watcher);
-			}
-		} else {
-			LOGGER.info("{} does not support dynamic reconfiguration", configSource.getURI());
-		}
-	}
+        if (configSource.getLastModified() > 0) {
+            final Source cfgSource = new Source(configSource);
+            final Watcher watcher = WatcherFactory.getInstance(pluginPackages).newWatcher(cfgSource, this, reconfigurable, listeners,
+                configSource.getLastModified());
+            if (watcher != null) {
+                watchManager.watch(cfgSource, watcher);
+            }
+        } else {
+            LOGGER.info("{} does not support dynamic reconfiguration", configSource.getURI());
+        }
+    }
 
-	/**
+    /**
      * Start the configuration.
      */
     @Override
@@ -381,7 +392,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         root.getReliabilityStrategy().beforeStopAppenders();
 
         // Stop the appenders in reverse order in case they still have activity.
-        final Appender[] array = appenders.values().toArray(new Appender[appenders.size()]);
+        final Appender[] array = appenders.values().toArray(Appender.EMPTY_ARRAY);
         final List<Appender> async = getAsyncAppenders(array);
         if (!async.isEmpty()) {
             // LOG4J2-511, LOG4J2-392 stop AsyncAppenders first
@@ -492,10 +503,8 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
                 try {
                     advertiser = clazz.newInstance();
                     advertisement = advertiser.advertise(advertiserNode.getAttributes());
-                } catch (final InstantiationException e) {
-                    LOGGER.error("InstantiationException attempting to instantiate advertiser: {}", nodeName, e);
-                } catch (final IllegalAccessException e) {
-                    LOGGER.error("IllegalAccessException attempting to instantiate advertiser: {}", nodeName, e);
+                } catch (final ReflectiveOperationException e) {
+                    LOGGER.error("{} attempting to instantiate advertiser: {}", e.getClass().getSimpleName(), nodeName, e);
                 }
             }
         }
@@ -628,14 +637,18 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
             createConfiguration(first, null);
             if (first.getObject() != null) {
                 StrLookup lookup = (StrLookup) first.getObject();
-                subst.setVariableResolver(lookup);
+                if (lookup instanceof LoggerContextAware) {
+                    ((LoggerContextAware) lookup).setLoggerContext(loggerContext.get());
+                }
+                runtimeStrSubstitutor.setVariableResolver(lookup);
                 configurationStrSubstitutor.setVariableResolver(lookup);
             }
         } else {
             final Map<String, String> map = this.getComponent(CONTEXT_PROPERTIES);
             final StrLookup lookup = map == null ? null : new PropertiesLookup(map);
             Interpolator interpolator = new Interpolator(lookup, pluginPackages);
-            subst.setVariableResolver(interpolator);
+            interpolator.setLoggerContext(loggerContext.get());
+            runtimeStrSubstitutor.setVariableResolver(interpolator);
             configurationStrSubstitutor.setVariableResolver(interpolator);
         }
 
@@ -643,7 +656,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         boolean setRoot = false;
         for (final Node child : rootNode.getChildren()) {
             if (child.getName().equalsIgnoreCase("Properties")) {
-                if (tempLookup == subst.getVariableResolver()) {
+                if (tempLookup == runtimeStrSubstitutor.getVariableResolver()) {
                     LOGGER.error("Properties declaration must be the first element in the configuration");
                 }
                 continue;
@@ -679,6 +692,9 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
                 final List<CustomLevelConfig> copy = new ArrayList<>(customLevels);
                 copy.add(child.getObject(CustomLevelConfig.class));
                 customLevels = copy;
+            } else if (child.isInstanceOf(AsyncWaitStrategyFactoryConfig.class)) {
+                AsyncWaitStrategyFactoryConfig awsfc = child.getObject(AsyncWaitStrategyFactoryConfig.class);
+                asyncWaitStrategyFactory = awsfc.createWaitStrategyFactory();
             } else {
                 final List<String> expected = Arrays.asList("\"Appenders\"", "\"Loggers\"", "\"Properties\"",
                         "\"Scripts\"", "\"CustomLevels\"");
@@ -714,6 +730,12 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         setParents();
     }
 
+    public static Level getDefaultLevel() {
+        final String levelName = PropertiesUtil.getProperties().getStringProperty(DefaultConfiguration.DEFAULT_LEVEL,
+                Level.ERROR.name());
+        return Level.valueOf(levelName);
+    }
+
     protected void setToDefault() {
         // LOG4J2-1176 facilitate memory leak investigation
         setName(DefaultConfiguration.DEFAULT_NAME + "@" + Integer.toHexString(hashCode()));
@@ -727,11 +749,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
         final LoggerConfig rootLoggerConfig = getRootLogger();
         rootLoggerConfig.addAppender(appender, null, null);
 
-        final Level defaultLevel = Level.ERROR;
-        final String levelName = PropertiesUtil.getProperties().getStringProperty(DefaultConfiguration.DEFAULT_LEVEL,
-                defaultLevel.name());
-        final Level level = Level.valueOf(levelName);
-        rootLoggerConfig.setLevel(level != null ? level : defaultLevel);
+        rootLoggerConfig.setLevel(getDefaultLevel());
     }
 
     /**
@@ -809,7 +827,7 @@ public abstract class AbstractConfiguration extends AbstractFilterable implement
 
     @Override
     public StrSubstitutor getStrSubstitutor() {
-        return subst;
+        return runtimeStrSubstitutor;
     }
 
     @Override

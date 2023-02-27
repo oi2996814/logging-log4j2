@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LogEvent;
@@ -61,6 +62,7 @@ public class PatternProcessor {
     private boolean isTimeBased = false;
 
     private RolloverFrequency frequency = null;
+    private TimeZone timeZone;
 
     private final String pattern;
 
@@ -83,8 +85,7 @@ public class PatternProcessor {
         final List<PatternConverter> converters = new ArrayList<>();
         final List<FormattingInfo> fields = new ArrayList<>();
         parser.parse(pattern, converters, fields, false, false, false);
-        final FormattingInfo[] infoArray = new FormattingInfo[fields.size()];
-        patternFields = fields.toArray(infoArray);
+        patternFields = fields.toArray(FormattingInfo.EMPTY_ARRAY);
         final ArrayPatternConverter[] converterArray = new ArrayPatternConverter[converters.size()];
         patternConverters = converters.toArray(converterArray);
         this.fileExtension = FileExtension.lookupForFile(pattern);
@@ -93,9 +94,11 @@ public class PatternProcessor {
             if (converter instanceof DatePatternConverter) {
                 final DatePatternConverter dateConverter = (DatePatternConverter) converter;
                 frequency = calculateFrequency(dateConverter.getPattern());
+                timeZone = dateConverter.getTimeZone();
             }
         }
     }
+
 
     /**
      * Copy constructor with another pattern as source.
@@ -108,6 +111,14 @@ public class PatternProcessor {
         this.prevFileTime = copy.prevFileTime;
         this.nextFileTime = copy.nextFileTime;
         this.currentFileTime = copy.currentFileTime;
+    }
+
+    public FormattingInfo[] getPatternFields() {
+        return patternFields;
+    }
+
+    public ArrayPatternConverter[] getPatternConverters() {
+        return patternConverters;
     }
 
     public void setTimeBased(boolean isTimeBased) {
@@ -153,9 +164,9 @@ public class PatternProcessor {
         if (frequency == null) {
             throw new IllegalStateException("Pattern does not contain a date");
         }
-        final Calendar currentCal = Calendar.getInstance();
+        final Calendar currentCal = Calendar.getInstance(timeZone);
         currentCal.setTimeInMillis(currentMillis);
-        final Calendar cal = Calendar.getInstance();
+        final Calendar cal = Calendar.getInstance(timeZone);
         currentCal.setMinimalDaysInFirstWeek(7);
         cal.setMinimalDaysInFirstWeek(7);
         cal.set(currentCal.get(Calendar.YEAR), 0, 1, 0, 0, 0);
@@ -225,10 +236,10 @@ public class PatternProcessor {
     }
 
     public void updateTime() {
-    	if (nextFileTime != 0 || !isTimeBased) {
-			prevFileTime = nextFileTime;
+        if (nextFileTime != 0 || !isTimeBased) {
+            prevFileTime = nextFileTime;
             currentFileTime = 0;
-		}
+        }
     }
 
     private long debugGetNextTime(final long nextTime) {
@@ -286,8 +297,8 @@ public class PatternProcessor {
         final long time = useCurrentTime ? currentFileTime != 0 ? currentFileTime : System.currentTimeMillis() :
                 prevFileTime != 0 ? prevFileTime : System.currentTimeMillis();
         formatFileName(buf, new Date(time), obj);
-        final LogEvent event = new Log4jLogEvent.Builder().setTimeMillis(time).build();
-        final String fileName = subst.replace(event, buf);
+        // LOG4J2-3643
+        final String fileName = subst.replace(null, buf);
         buf.setLength(0);
         buf.append(fileName);
     }

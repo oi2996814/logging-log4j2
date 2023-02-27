@@ -16,6 +16,11 @@
  */
 package org.apache.logging.log4j.core.config;
 
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,13 +29,8 @@ import org.apache.logging.log4j.core.impl.Log4jContextFactory;
 import org.apache.logging.log4j.core.util.NetUtils;
 import org.apache.logging.log4j.spi.LoggerContextFactory;
 import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.StackLocatorUtil;
 import org.apache.logging.log4j.util.Strings;
-
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Initializes and configure the Logging system. This class provides several ways to construct a LoggerContext using
@@ -115,20 +115,8 @@ public final class Configurator {
         if (Strings.isBlank(configLocation)) {
             return initialize(name, loader, (URI) null, externalContext);
         }
-        if (configLocation.contains(",")) {
-            final String[] parts = configLocation.split(",");
-            String scheme = null;
-            final List<URI> uris = new ArrayList<>(parts.length);
-            for (final String part : parts) {
-                final URI uri = NetUtils.toURI(scheme != null ? scheme + ":" + part.trim() : part.trim());
-                if (scheme == null && uri.getScheme() != null) {
-                    scheme = uri.getScheme();
-                }
-                uris.add(uri);
-            }
-            return initialize(name, loader, uris, externalContext);
-        }
-        return initialize(name, loader, NetUtils.toURI(configLocation), externalContext);
+        return configLocation.contains(",") ? initialize(name, loader, NetUtils.toURIs(configLocation), externalContext) :
+                initialize(name, loader, NetUtils.toURI(configLocation), externalContext);
     }
 
     /**
@@ -303,6 +291,7 @@ public final class Configurator {
 
     /**
      * Sets the levels of <code>parentLogger</code> and all 'child' loggers to the given <code>level</code>.
+     *
      * @param parentLogger the parent logger
      * @param level the new level
      */
@@ -312,7 +301,7 @@ public final class Configurator {
         // 3) set level on logger config
         // 4) update child logger configs with level
         // 5) update loggers
-        final LoggerContext loggerContext = LoggerContext.getContext(false);
+        final LoggerContext loggerContext = LoggerContext.getContext(StackLocatorUtil.getCallerClassLoader(2), false, null);
         final Configuration config = loggerContext.getConfiguration();
         boolean set = setLevel(parentLogger, level, config);
         for (final Map.Entry<String, LoggerConfig> entry : config.getLoggers().entrySet()) {
@@ -325,12 +314,48 @@ public final class Configurator {
         }
     }
 
+    /**
+     * Sets a logger's level.
+     *
+     * @param logger
+     *            the logger
+     * @param level
+     *            the new level
+     * @return the given logger
+     */
+    public static Logger setLevel(final Logger logger, final Level level) {
+        setLevel(LoggerContext.getContext(StackLocatorUtil.getCallerClassLoader(2), false, null), logger.getName(), level);
+        return logger;
+    }
+
+    /**
+     * Sets a logger's level.
+     *
+     * @param clazz
+     *            the logger
+     * @param level
+     *            the new level
+     */
+    public static void setLevel(final Class<?> clazz, final Level level) {
+        final String canonicalName = clazz.getCanonicalName();
+        setLevel(LoggerContext.getContext(StackLocatorUtil.getCallerClassLoader(2), false, null),
+                canonicalName != null ? canonicalName : clazz.getName(), level);
+    }
+
     private static boolean setLevel(final LoggerConfig loggerConfig, final Level level) {
         final boolean set = !loggerConfig.getLevel().equals(level);
         if (set) {
             loggerConfig.setLevel(level);
         }
         return set;
+    }
+
+    private static void setLevel(final LoggerContext loggerContext, final String loggerName, final Level level) {
+        if (Strings.isEmpty(loggerName)) {
+            setRootLevel(level, loggerContext);
+        } else if (setLevel(loggerName, level, loggerContext.getConfiguration())) {
+            loggerContext.updateLoggers();
+        }
     }
 
     /**
@@ -341,7 +366,7 @@ public final class Configurator {
      *            Levels.
      */
     public static void setLevel(final Map<String, Level> levelMap) {
-        final LoggerContext loggerContext = LoggerContext.getContext(false);
+        final LoggerContext loggerContext = LoggerContext.getContext(StackLocatorUtil.getCallerClassLoader(2), false, null);
         final Configuration config = loggerContext.getConfiguration();
         boolean set = false;
         for (final Map.Entry<String, Level> entry : levelMap.entrySet()) {
@@ -363,12 +388,19 @@ public final class Configurator {
      *            the new level
      */
     public static void setLevel(final String loggerName, final Level level) {
-        final LoggerContext loggerContext = LoggerContext.getContext(false);
-        if (Strings.isEmpty(loggerName)) {
-            setRootLevel(level);
-        } else if (setLevel(loggerName, level, loggerContext.getConfiguration())) {
-            loggerContext.updateLoggers();
-        }
+        setLevel(LoggerContext.getContext(StackLocatorUtil.getCallerClassLoader(2), false, null), loggerName, level);
+    }
+
+    /**
+     * Sets a logger's level.
+     *
+     * @param loggerName
+     *            the logger name
+     * @param level
+     *            the new level
+     */
+    public static void setLevel(final String loggerName, final String level) {
+        setLevel(LoggerContext.getContext(StackLocatorUtil.getCallerClassLoader(2), false, null), loggerName, Level.toLevel(level));
     }
 
     private static boolean setLevel(final String loggerName, final Level level, final Configuration config) {
@@ -393,7 +425,10 @@ public final class Configurator {
      *            the new level
      */
     public static void setRootLevel(final Level level) {
-        final LoggerContext loggerContext = LoggerContext.getContext(false);
+        setRootLevel(level, LoggerContext.getContext(StackLocatorUtil.getCallerClassLoader(2), false, null));
+    }
+
+    private static void setRootLevel(final Level level, final LoggerContext loggerContext) {
         final LoggerConfig loggerConfig = loggerContext.getConfiguration().getRootLogger();
         if (!loggerConfig.getLevel().equals(level)) {
             loggerConfig.setLevel(level);

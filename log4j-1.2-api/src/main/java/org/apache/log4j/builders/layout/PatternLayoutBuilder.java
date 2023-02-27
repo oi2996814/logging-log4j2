@@ -16,6 +16,11 @@
  */
 package org.apache.log4j.builders.layout;
 
+import static org.apache.log4j.builders.BuilderManager.CATEGORY;
+import static org.apache.log4j.xml.XmlConfiguration.PARAM_TAG;
+
+import java.util.Properties;
+
 import org.apache.log4j.Layout;
 import org.apache.log4j.bridge.LayoutWrapper;
 import org.apache.log4j.builders.AbstractBuilder;
@@ -31,17 +36,12 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import java.util.Properties;
-
-import static org.apache.log4j.builders.BuilderManager.CATEGORY;
-import static org.apache.log4j.xml.XmlConfiguration.PARAM_TAG;
-
 /**
  * Build a Pattern Layout
  */
 @Plugin(name = "org.apache.log4j.PatternLayout", category = CATEGORY)
 @PluginAliases("org.apache.log4j.EnhancedPatternLayout")
-public class PatternLayoutBuilder extends AbstractBuilder implements LayoutBuilder {
+public class PatternLayoutBuilder extends AbstractBuilder<Layout> implements LayoutBuilder {
 
     private static final Logger LOGGER = StatusLogger.getLogger();
     private static final String PATTERN = "ConversionPattern";
@@ -54,7 +54,7 @@ public class PatternLayoutBuilder extends AbstractBuilder implements LayoutBuild
     }
 
     @Override
-    public Layout parseLayout(final Element layoutElement, final XmlConfiguration config) {
+    public Layout parse(final Element layoutElement, final XmlConfiguration config) {
         NodeList params = layoutElement.getElementsByTagName("param");
         final int length = params.getLength();
         String pattern = null;
@@ -74,31 +74,33 @@ public class PatternLayoutBuilder extends AbstractBuilder implements LayoutBuild
     }
 
     @Override
-    public Layout parseLayout(final PropertiesConfiguration config) {
+    public Layout parse(final PropertiesConfiguration config) {
         String pattern = getProperty(PATTERN);
         return createLayout(pattern, config);
     }
 
-    private Layout createLayout(String pattern, final Log4j1Configuration config) {
+    Layout createLayout(String pattern, final Log4j1Configuration config) {
         if (pattern == null) {
             LOGGER.info("No pattern provided for pattern layout, using default pattern");
             pattern = PatternLayout.DEFAULT_CONVERSION_PATTERN;
         }
-        return new LayoutWrapper(PatternLayout.newBuilder()
+        return LayoutWrapper.adapt(PatternLayout.newBuilder()
                 .withPattern(pattern
+                        // Log4j 2 and Log4j 1 level names differ for custom levels
+                        .replaceAll("%([-\\.\\d]*)p(?!\\w)", "%$1v1Level")
                         // Log4j 2's %x (NDC) is not compatible with Log4j 1's
                         // %x
                         // Log4j 1: "foo bar baz"
                         // Log4j 2: "[foo, bar, baz]"
                         // Use %ndc to get the Log4j 1 format
-                        .replace("%x", "%ndc")
+                        .replaceAll("%([-\\.\\d]*)x(?!\\w)", "%$1ndc")
 
                         // Log4j 2's %X (MDC) is not compatible with Log4j 1's
                         // %X
                         // Log4j 1: "{{foo,bar}{hoo,boo}}"
                         // Log4j 2: "{foo=bar,hoo=boo}"
                         // Use %properties to get the Log4j 1 format
-                        .replace("%X", "%properties"))
+                        .replaceAll("%([-\\.\\d]*)X(?!\\w)", "%$1properties"))
                 .withConfiguration(config)
                 .build());
     }

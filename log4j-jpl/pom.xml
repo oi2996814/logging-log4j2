@@ -15,20 +15,19 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>log4j</artifactId>
     <groupId>org.apache.logging.log4j</groupId>
-    <version>2.17.2-SNAPSHOT</version>
-    <relativePath>../</relativePath>
+    <version>2.20.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
     <log4jParentDir>${basedir}/..</log4jParentDir>
     <module.name>org.apache.logging.log4j.jpl</module.name>
-    <maven.doap.skip>true</maven.doap.skip>
+    <!-- Do not upgrade until https://issues.apache.org/jira/browse/SUREFIRE-2073 is fixed -->
+    <surefire.version>2.13</surefire.version>
   </properties>
 
   <artifactId>log4j-jpl</artifactId>
@@ -47,8 +46,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <type>test-jar</type>
+      <artifactId>log4j-core-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -57,32 +55,19 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.junit.vintage</groupId>
-      <artifactId>junit-vintage-engine</artifactId>
-    </dependency>
-    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
-      <!-- Include the standard NOTICE and LICENSE -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-remote-resources-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>process</goal>
-            </goals>
-            <configuration>
-              <skip>false</skip>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
@@ -91,25 +76,6 @@
             <Fragment-Host>org.apache.logging.log4j.core</Fragment-Host>
             <Export-Package>org.apache.logging.log4j.jpl</Export-Package>
           </instructions>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-toolchains-plugin</artifactId>
-        <version>3.0.0</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>toolchain</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <toolchains>
-            <jdk>
-              <version>[11, )</version>
-            </jdk>
-          </toolchains>
         </configuration>
       </plugin>
       <plugin>
@@ -143,8 +109,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <!-- Do not upgrade until https://issues.apache.org/jira/browse/SUREFIRE-720 is fixed -->
-        <version>2.13</version>
         <configuration>
           <excludes combine.self="override" />
         </configuration>
@@ -158,83 +122,26 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-toolchains-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>toolchain</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <toolchains>
+            <jdk>
+              <version>[11, )</version>
+            </jdk>
+          </toolchains>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
-  <reporting>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-changes-plugin</artifactId>
-        <version>${changes.plugin.version}</version>
-        <reportSets>
-          <reportSet>
-            <reports>
-              <report>changes-report</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-        <configuration>
-          <issueLinkTemplate>%URL%/show_bug.cgi?id=%ISSUE%</issueLinkTemplate>
-          <useJql>true</useJql>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>${checkstyle.plugin.version}</version>
-        <configuration>
-          <configLocation>${log4jParentDir}/checkstyle.xml</configLocation>
-          <suppressionsLocation>${log4jParentDir}/checkstyle-suppressions.xml</suppressionsLocation>
-          <enableRulesSummary>false</enableRulesSummary>
-          <propertyExpansion>basedir=${basedir}</propertyExpansion>
-          <propertyExpansion>licensedir=${log4jParentDir}/checkstyle-header.txt</propertyExpansion>
-          <excludes>**/module-info.java</excludes>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>${javadoc.plugin.version}</version>
-        <configuration>
-          <bottom><![CDATA[<p align="center">Copyright &#169; {inceptionYear}-{currentYear} {organizationName}. All Rights Reserved.<br />
-            Apache Logging, Apache Log4j, Log4j, Apache, the Apache feather logo, the Apache Logging project logo,
-            and the Apache Log4j logo are trademarks of The Apache Software Foundation.</p>]]></bottom>
-          <!-- module link generation is completely broken in the javadoc plugin for a multi-module non-aggregating
-               project -->
-          <detectOfflineLinks>false</detectOfflineLinks>
-          <linksource>true</linksource>
-          <failOnError>false</failOnError>
-        </configuration>
-        <reportSets>
-          <reportSet>
-            <id>non-aggregate</id>
-            <reports>
-              <report>javadoc</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jxr-plugin</artifactId>
-        <version>${jxr.plugin.version}</version>
-        <reportSets>
-          <reportSet>
-            <id>non-aggregate</id>
-            <reports>
-              <report>jxr</report>
-            </reports>
-          </reportSet>
-          <reportSet>
-            <id>aggregate</id>
-            <reports>
-              <report>aggregate</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-      </plugin>
-    </plugins>
-  </reporting>
   <profiles>
     <profile>
       <id>java11-module</id>
@@ -246,8 +153,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
-            <!-- Use Maven Surefire 2.21 which brings module support -->
-            <version>${surefire.plugin.version}</version>
             <!-- Disable forked VM as 2.21 yields https://issues.apache.org/jira/browse/SUREFIRE-720 -->
             <configuration combine.self="override" />
             <executions>
@@ -262,19 +167,6 @@
           </plugin>
         </plugins>
       </build>
-      <reporting>
-        <plugins>
-          <plugin>
-            <!-- pmd is not compatible with toolchain and needs same JDK than one use to compile -->
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-pmd-plugin</artifactId>
-            <version>${pmd.plugin.version}</version>
-            <configuration>
-              <targetJdk>${maven.compiler.target}</targetJdk>
-            </configuration>
-          </plugin>
-        </plugins>
-      </reporting>
     </profile>
   </profiles>
 </project>

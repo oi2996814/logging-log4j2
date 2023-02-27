@@ -126,7 +126,7 @@ public class DefaultRolloverStrategy extends AbstractRolloverStrategy {
                 useMax = fileIndex == null ? true : fileIndex.equalsIgnoreCase("max");
                 minIndex = MIN_WINDOW_SIZE;
                 if (min != null) {
-                    minIndex = Integer.parseInt(min);
+                    minIndex = Integers.parseInt(min);
                     if (minIndex < 1) {
                         LOGGER.error("Minimum window size too small. Limited to " + MIN_WINDOW_SIZE);
                         minIndex = MIN_WINDOW_SIZE;
@@ -134,14 +134,15 @@ public class DefaultRolloverStrategy extends AbstractRolloverStrategy {
                 }
                 maxIndex = DEFAULT_WINDOW_SIZE;
                 if (max != null) {
-                    maxIndex = Integer.parseInt(max);
+                    maxIndex = Integer.parseInt(max.trim());
                     if (maxIndex < minIndex) {
                         maxIndex = minIndex < DEFAULT_WINDOW_SIZE ? DEFAULT_WINDOW_SIZE : minIndex;
                         LOGGER.error("Maximum window size must be greater than the minimum windows size. Set to " + maxIndex);
                     }
                 }
             }
-            final int compressionLevel = Integers.parseInt(compressionLevelStr, Deflater.DEFAULT_COMPRESSION);
+            final String trimmedCompressionLevelStr = compressionLevelStr != null ? compressionLevelStr.trim() : compressionLevelStr;
+            final int compressionLevel = Integers.parseInt(trimmedCompressionLevelStr, Deflater.DEFAULT_COMPRESSION);
             // The config object can be null when this object is built programmatically.
             final StrSubstitutor nonNullStrSubstitutor = config != null ? config.getStrSubstitutor() : new StrSubstitutor();
 			return new DefaultRolloverStrategy(minIndex, maxIndex, useMax, compressionLevel, nonNullStrSubstitutor,
@@ -413,7 +414,7 @@ public class DefaultRolloverStrategy extends AbstractRolloverStrategy {
     private int purgeAscending(final int lowIndex, final int highIndex, final RollingFileManager manager) {
         final SortedMap<Integer, Path> eligibleFiles = getEligibleFiles(manager);
         final int maxFiles = highIndex - lowIndex + 1;
-
+        LOGGER.debug("Eligible files: {}", eligibleFiles);
         boolean renameFiles = !eligibleFiles.isEmpty() && eligibleFiles.lastKey() >= maxIndex;
         while (eligibleFiles.size() >= maxFiles) {
             try {
@@ -474,6 +475,7 @@ public class DefaultRolloverStrategy extends AbstractRolloverStrategy {
         while (eligibleFiles.size() >= maxFiles) {
             try {
                 final Integer key = eligibleFiles.firstKey();
+                LOGGER.debug("Deleting {}", eligibleFiles.get(key).toFile().getAbsolutePath());
                 Files.delete(eligibleFiles.get(key));
                 eligibleFiles.remove(key);
             } catch (final IOException ioe) {
@@ -575,7 +577,7 @@ public class DefaultRolloverStrategy extends AbstractRolloverStrategy {
         }
 
         if (compressAction != null && manager.isAttributeViewEnabled()) {
-            // Propagate posix attribute view to compressed file
+            // Propagate POSIX attribute view to compressed file
             // @formatter:off
             final Action posixAttributeViewAction = PosixViewAttributeAction.newBuilder()
                                                         .withBasePath(compressedName)

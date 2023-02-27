@@ -17,24 +17,17 @@
 
 package org.apache.logging.log4j.core.async;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.SleepingWaitStrategy;
-import com.lmax.disruptor.TimeoutBlockingWaitStrategy;
 import com.lmax.disruptor.WaitStrategy;
-import com.lmax.disruptor.YieldingWaitStrategy;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.util.Constants;
 import org.apache.logging.log4j.core.util.Integers;
 import org.apache.logging.log4j.core.util.Loader;
 import org.apache.logging.log4j.status.StatusLogger;
 import org.apache.logging.log4j.util.PropertiesUtil;
-import org.apache.logging.log4j.util.Strings;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /**
  * Utility methods for getting Disruptor related configuration.
@@ -59,46 +52,16 @@ final class DisruptorUtil {
     private DisruptorUtil() {
     }
 
-    static WaitStrategy createWaitStrategy(final String propertyName) {
-        final String strategy = PropertiesUtil.getProperties().getStringProperty(propertyName, "Timeout");
-        LOGGER.trace("property {}={}", propertyName, strategy);
-        final String strategyUp = Strings.toRootUpperCase(strategy);
-        final long timeoutMillis = parseAdditionalLongProperty(propertyName, "Timeout", 10L);
-        // String (not enum) is deliberately used here to avoid IllegalArgumentException being thrown. In case of
-        // incorrect property value, default WaitStrategy is created.
-        switch (strategyUp) {
-            case "SLEEP":
-                final long sleepTimeNs =
-                        parseAdditionalLongProperty(propertyName, "SleepTimeNs", 100L);
-                final String key = getFullPropertyKey(propertyName, "Retries");
-                final int retries =
-                        PropertiesUtil.getProperties().getIntegerProperty(key, 200);
-                return new SleepingWaitStrategy(retries, sleepTimeNs);
-            case "YIELD":
-                return new YieldingWaitStrategy();
-            case "BLOCK":
-                return new BlockingWaitStrategy();
-            case "BUSYSPIN":
-                return new BusySpinWaitStrategy();
-            case "TIMEOUT":
-                return new TimeoutBlockingWaitStrategy(timeoutMillis, TimeUnit.MILLISECONDS);
-            default:
-                return new TimeoutBlockingWaitStrategy(timeoutMillis, TimeUnit.MILLISECONDS);
+    static WaitStrategy createWaitStrategy(final String propertyName,
+                                           final AsyncWaitStrategyFactory asyncWaitStrategyFactory) {
+
+        if (asyncWaitStrategyFactory == null) {
+            LOGGER.debug("No AsyncWaitStrategyFactory was configured in the configuration, using default factory...");
+            return new DefaultAsyncWaitStrategyFactory(propertyName).createWaitStrategy();
         }
-    }
 
-    private static String getFullPropertyKey(final String strategyKey, final String additionalKey) {
-        return strategyKey.startsWith("AsyncLogger.")
-                ? "AsyncLogger." + additionalKey
-                : "AsyncLoggerConfig." + additionalKey;
-    }
-
-    private static long parseAdditionalLongProperty(
-            final String propertyName,
-            final String additionalKey,
-            long defaultValue) {
-        final String key = getFullPropertyKey(propertyName, additionalKey);
-        return PropertiesUtil.getProperties().getLongProperty(key, defaultValue);
+        LOGGER.debug("Using configured AsyncWaitStrategyFactory {}", asyncWaitStrategyFactory.getClass().getName());
+        return asyncWaitStrategyFactory.createWaitStrategy();
     }
 
     static int calculateRingBufferSize(final String propertyName) {
@@ -106,7 +69,7 @@ final class DisruptorUtil {
         final String userPreferredRBSize = PropertiesUtil.getProperties().getStringProperty(propertyName,
                 String.valueOf(ringBufferSize));
         try {
-            int size = Integer.parseInt(userPreferredRBSize);
+            int size = Integers.parseInt(userPreferredRBSize);
             if (size < RINGBUFFER_MIN_SIZE) {
                 size = RINGBUFFER_MIN_SIZE;
                 LOGGER.warn("Invalid RingBufferSize {}, using minimum size {}.", userPreferredRBSize,

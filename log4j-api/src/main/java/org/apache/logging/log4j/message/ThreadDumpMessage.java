@@ -16,16 +16,16 @@
  */
 package org.apache.logging.log4j.message;
 
+import static org.apache.logging.log4j.util.Chars.LF;
+
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
 
-import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.ServiceLoaderUtil;
 import org.apache.logging.log4j.util.StringBuilderFormattable;
 import org.apache.logging.log4j.util.Strings;
 
@@ -57,25 +57,15 @@ public class ThreadDumpMessage implements Message, StringBuilderFormattable {
 
     private static ThreadInfoFactory getFactory() {
         if (FACTORY == null) {
-            FACTORY = initFactory(ThreadDumpMessage.class.getClassLoader());
+            FACTORY = initFactory();
         }
         return FACTORY;
     }
 
-    private static ThreadInfoFactory initFactory(final ClassLoader classLoader) {
-        final ServiceLoader<ThreadInfoFactory> serviceLoader = ServiceLoader.load(ThreadInfoFactory.class, classLoader);
-        ThreadInfoFactory result = null;
-        try {
-            final Iterator<ThreadInfoFactory> iterator = serviceLoader.iterator();
-            while (result == null && iterator.hasNext()) {
-                result = iterator.next();
-            }
-        } catch (ServiceConfigurationError | LinkageError | Exception unavailable) { // if java management classes not available
-            StatusLogger.getLogger().info("ThreadDumpMessage uses BasicThreadInfoFactory: " +
-                            "could not load extended ThreadInfoFactory: {}", unavailable.toString());
-            result = null;
-        }
-        return result == null ? new BasicThreadInfoFactory() : result;
+    private static ThreadInfoFactory initFactory() {
+        return ServiceLoaderUtil.loadServices(ThreadInfoFactory.class, MethodHandles.lookup(), false)
+                .findFirst()
+                .orElseGet(BasicThreadInfoFactory::new);
     }
 
     @Override
@@ -101,13 +91,13 @@ public class ThreadDumpMessage implements Message, StringBuilderFormattable {
     public void formatTo(final StringBuilder sb) {
         sb.append(title);
         if (title.length() > 0) {
-            sb.append('\n');
+            sb.append(LF);
         }
         for (final Map.Entry<ThreadInformation, StackTraceElement[]> entry : threads.entrySet()) {
             final ThreadInformation info = entry.getKey();
             info.printThreadInfo(sb);
             info.printStack(sb, entry.getValue());
-            sb.append('\n');
+            sb.append(LF);
         }
     }
 

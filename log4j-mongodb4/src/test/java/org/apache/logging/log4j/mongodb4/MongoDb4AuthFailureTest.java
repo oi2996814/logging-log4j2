@@ -18,11 +18,11 @@ package org.apache.logging.log4j.mongodb4;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.categories.Appenders;
-import org.apache.logging.log4j.junit.LoggerContextRule;
+import org.apache.logging.log4j.core.test.AvailablePortSystemPropertyTestRule;
+import org.apache.logging.log4j.core.test.RuleChainFactory;
+import org.apache.logging.log4j.core.test.categories.Appenders;
+import org.apache.logging.log4j.core.test.junit.LoggerContextRule;
 import org.apache.logging.log4j.mongodb4.MongoDb4TestRule.LoggingTarget;
-import org.apache.logging.log4j.test.AvailablePortSystemPropertyTestRule;
-import org.apache.logging.log4j.test.RuleChainFactory;
 import org.bson.Document;
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -61,9 +61,9 @@ public class MongoDb4AuthFailureTest {
         final Logger logger = LogManager.getLogger();
         logger.info("Hello log");
         try (final MongoClient mongoClient = mongoDbTestRule.getMongoClient()) {
-            final MongoDatabase database = mongoClient.getDatabase("testDb");
+            final MongoDatabase database = mongoClient.getDatabase(MongoDb4TestConstants.DATABASE_NAME);
             Assert.assertNotNull(database);
-            final MongoCollection<Document> collection = database.getCollection("testCollection");
+            final MongoCollection<Document> collection = database.getCollection(MongoDb4TestConstants.COLLECTION_NAME);
             Assert.assertNotNull(collection);
             final Document first = collection.find().first();
             Assert.assertNull(first);

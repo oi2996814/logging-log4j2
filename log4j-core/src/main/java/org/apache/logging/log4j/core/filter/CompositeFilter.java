@@ -60,12 +60,9 @@ public final class CompositeFilter extends AbstractLifeCycle implements Iterable
             return this;
         }
         if (filter instanceof CompositeFilter) {
-            final int size = this.filters.length + ((CompositeFilter) filter).size();
-            final Filter[] copy = Arrays.copyOf(this.filters, size);
-            final int index = this.filters.length;
-            for (final Filter currentFilter : ((CompositeFilter) filter).filters) {
-                copy[index] = currentFilter;
-            }
+            final CompositeFilter compositeFilter = (CompositeFilter) filter;
+            final Filter[] copy = Arrays.copyOf(this.filters, this.filters.length + compositeFilter.size());
+            System.arraycopy(compositeFilter.filters, 0, copy, this.filters.length, compositeFilter.filters.length);
             return new CompositeFilter(copy);
         }
         final Filter[] copy = Arrays.copyOf(this.filters, this.filters.length + 1);
@@ -89,7 +86,7 @@ public final class CompositeFilter extends AbstractLifeCycle implements Iterable
         } else {
             filterList.remove(filter);
         }
-        return new CompositeFilter(filterList.toArray(new Filter[this.filters.length - 1]));
+        return new CompositeFilter(filterList.toArray(Filter.EMPTY_ARRAY));
     }
 
     @Override

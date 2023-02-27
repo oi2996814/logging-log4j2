@@ -20,8 +20,7 @@
   <parent>
     <groupId>org.apache.logging.log4j</groupId>
     <artifactId>log4j</artifactId>
-    <version>2.17.2-SNAPSHOT</version>
-    <relativePath>../</relativePath>
+    <version>2.20.1-SNAPSHOT</version>
   </parent>
   <artifactId>log4j-jmx-gui</artifactId>
   <packaging>jar</packaging>
@@ -35,7 +34,6 @@
     <projectDir>/jmx-gui</projectDir>
     <jenkins.java.home>/home/jenkins/tools/java/latest1.7</jenkins.java.home>
     <module.name>org.apache.logging.log4j.jmx.gui</module.name>
-    <maven.doap.skip>true</maven.doap.skip>
   </properties>
   <dependencies>
     <dependency>
@@ -48,8 +46,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <type>test-jar</type>
+      <artifactId>log4j-core-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -60,21 +57,6 @@
   </dependencies>
   <build>
     <plugins>
-      <!-- Include the standard NOTICE and LICENSE -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-remote-resources-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>process</goal>
-            </goals>
-            <configuration>
-              <skip>false</skip>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
@@ -87,92 +69,6 @@
       </plugin>
     </plugins>
   </build>
-  <reporting>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-changes-plugin</artifactId>
-        <version>${changes.plugin.version}</version>
-        <reportSets>
-          <reportSet>
-            <reports>
-              <report>changes-report</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-        <configuration>
-          <issueLinkTemplate>%URL%/show_bug.cgi?id=%ISSUE%</issueLinkTemplate>
-          <useJql>true</useJql>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>${checkstyle.plugin.version}</version>
-        <configuration>
-          <!--<propertiesLocation>${vfs.parent.dir}/checkstyle.properties</propertiesLocation> -->
-          <configLocation>${log4jParentDir}/checkstyle.xml</configLocation>
-          <suppressionsLocation>${log4jParentDir}/checkstyle-suppressions.xml</suppressionsLocation>
-          <enableRulesSummary>false</enableRulesSummary>
-          <propertyExpansion>basedir=${basedir}</propertyExpansion>
-          <propertyExpansion>licensedir=${log4jParentDir}/checkstyle-header.txt</propertyExpansion>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>${javadoc.plugin.version}</version>
-        <configuration>
-          <bottom><![CDATA[<p align="center">Copyright &#169; {inceptionYear}-{currentYear} {organizationName}. All Rights Reserved.<br />
-            Apache Logging, Apache Log4j, Log4j, Apache, the Apache feather logo, the Apache Logging project logo,
-            and the Apache Log4j logo are trademarks of The Apache Software Foundation.</p>]]></bottom>
-          <!-- module link generation is completely broken in the javadoc plugin for a multi-module non-aggregating
-               project -->
-          <detectOfflineLinks>false</detectOfflineLinks>
-          <linksource>true</linksource>
-        </configuration>
-        <reportSets>
-          <reportSet>
-            <id>non-aggregate</id>
-            <reports>
-              <report>javadoc</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-      </plugin>
-      <plugin>
-        <groupId>com.github.spotbugs</groupId>
-        <artifactId>spotbugs-maven-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jxr-plugin</artifactId>
-        <version>${jxr.plugin.version}</version>
-        <reportSets>
-          <reportSet>
-            <id>non-aggregate</id>
-            <reports>
-              <report>jxr</report>
-            </reports>
-          </reportSet>
-          <reportSet>
-            <id>aggregate</id>
-            <reports>
-              <report>aggregate</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-pmd-plugin</artifactId>
-        <version>${pmd.plugin.version}</version>
-        <configuration>
-          <targetJdk>${maven.compiler.target}</targetJdk>
-        </configuration>
-      </plugin>
-    </plugins>
-  </reporting>
   <profiles>
     <profile>
       <id>default-jmx-profile</id>
@@ -189,7 +85,6 @@
         <dependency>
           <groupId>com.sun</groupId>
           <artifactId>jconsole</artifactId>
-          <version>1.7.0</version>
           <scope>system</scope>
           <systemPath>${java.home}/../lib/jconsole.jar</systemPath>
           <optional>true</optional>
@@ -208,7 +103,6 @@
         <dependency>
           <groupId>com.sun</groupId>
           <artifactId>jconsole</artifactId>
-          <version>1.7.0</version>
           <scope>system</scope>
           <systemPath>${java.home}/../Classes/jconsole.jar</systemPath>
           <optional>true</optional>
@@ -227,7 +121,6 @@
         <dependency>
           <groupId>com.sun</groupId>
           <artifactId>jconsole</artifactId>
-          <version>1.7.0</version>
           <scope>system</scope>
           <systemPath>${jenkins.java.home}/lib/jconsole.jar</systemPath>
           <optional>true</optional>
@@ -236,4 +129,3 @@
     </profile>
   </profiles>
 </project>
-

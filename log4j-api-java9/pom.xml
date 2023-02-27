@@ -20,8 +20,7 @@
   <parent>
     <groupId>org.apache.logging.log4j</groupId>
     <artifactId>log4j</artifactId>
-    <version>2.17.2-SNAPSHOT</version>
-    <relativePath>../</relativePath>
+    <version>2.20.1-SNAPSHOT</version>
   </parent>
   <artifactId>log4j-api-java9</artifactId>
   <packaging>pom</packaging>
@@ -31,92 +30,22 @@
     <log4jParentDir>${basedir}/..</log4jParentDir>
     <docLabel>API Documentation</docLabel>
     <projectDir>/api</projectDir>
+    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
   <dependencies>
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-core</artifactId>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-toolchains-plugin</artifactId>
-        <version>3.0.0</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>toolchain</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <toolchains>
-            <jdk>
-              <version>[9, )</version>
-            </jdk>
-          </toolchains>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>default-compile</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>default-test-compile</id>
-            <phase>test-compile</phase>
-            <goals>
-              <goal>testCompile</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <source>9</source>
-          <target>9</target>
-          <release>9</release>
-          <proc>none</proc>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <!-- Do not upgrade until https://issues.apache.org/jira/browse/SUREFIRE-720 is fixed -->
-        <version>2.13</version>
-        <executions>
-          <execution>
-            <id>test</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <systemPropertyVariables>
-            <java.awt.headless>true</java.awt.headless>
-          </systemPropertyVariables>
-          <includes>
-            <include>**/Test*.java</include>
-            <include>**/*Test.java</include>
-          </includes>
-          <excludes>
-            <exclude>**/*FuncTest.java</exclude>
-          </excludes>
-        </configuration>
-      </plugin>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <executions>
@@ -138,22 +67,72 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-deploy-plugin</artifactId>
-        <version>${deploy.plugin.version}</version>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-compile</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <jdkToolchain>
+                <version>[9, )</version>
+              </jdkToolchain>
+              <release>9</release>
+            </configuration>
+          </execution>
+          <!-- We explicitly compile tests using Java 8 to work around SUREFIRE-2073 -->
+          <execution>
+            <id>default-test-compile</id>
+            <phase>test-compile</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+          <!-- Of course the 'module-info.java' needs Java 9 -->
+          <execution>
+            <id>test-compile-module</id>
+            <phase>test-compile</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+            <configuration>
+              <jdkToolchain>
+                <version>[9, )</version>
+              </jdkToolchain>
+              <release>9</release>
+              <compileSourceRoots>
+                <compileSourceRoot>${project.basedir}/src/test/java9</compileSourceRoot>
+              </compileSourceRoots>
+            </configuration>
+          </execution>
+        </executions>
         <configuration>
-          <skip>true</skip>
+          <proc>none</proc>
         </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-site-plugin</artifactId>
-        <version>${site.plugin.version}</version>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
-          <skip>true</skip>
-          <skipDeploy>true</skipDeploy>
+          <systemPropertyVariables>
+            <java.awt.headless>true</java.awt.headless>
+          </systemPropertyVariables>
+          <jdkToolchain>
+            <version>[9, )</version>
+          </jdkToolchain>
         </configuration>
       </plugin>
     </plugins>
   </build>
 </project>
-

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -112,16 +113,19 @@ public final class FileUtils {
      */
     public static void mkdir(final File dir, final boolean createDirectoryIfNotExisting) throws IOException {
         // commons io FileUtils.forceMkdir would be useful here, we just want to omit this dependency
-        if (!dir.exists()) {
-            if (!createDirectoryIfNotExisting) {
-                throw new IOException("The directory " + dir.getAbsolutePath() + " does not exist.");
-            }
-            if (!dir.mkdirs()) {
-                throw new IOException("Could not create directory " + dir.getAbsolutePath());
-            }
+
+        if (!dir.exists() && !createDirectoryIfNotExisting) {
+            throw new IOException("The directory " + dir.getAbsolutePath() + " does not exist.");
         }
-        if (!dir.isDirectory()) {
-            throw new IOException("File " + dir + " exists and is not a directory. Unable to create directory.");
+
+        try {
+            Files.createDirectories(dir.toPath());
+        } catch (FileAlreadyExistsException e) {
+            if (!dir.isDirectory()) {
+                throw new IOException("File " + dir + " exists and is not a directory. Unable to create directory.");
+            }
+        } catch (Exception e) {
+            throw new IOException("Could not create directory " + dir.getAbsolutePath());
         }
     }
     
@@ -139,7 +143,7 @@ public final class FileUtils {
     }
 
     /**
-     * Define file posix attribute view on a path/file.
+     * Define file POSIX attribute view on a path/file.
      *
      * @param path Target path
      * @param filePermissions Permissions to apply
@@ -180,9 +184,9 @@ public final class FileUtils {
     }
 
     /**
-     * Check if posix file attribute view is supported on the default FileSystem.
+     * Check if POSIX file attribute view is supported on the default FileSystem.
      *
-     * @return true if posix file attribute view supported, false otherwise
+     * @return true if POSIX file attribute view supported, false otherwise
      */
     public static boolean isFilePosixAttributeViewSupported() {
         return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");

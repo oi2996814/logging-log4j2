@@ -111,11 +111,16 @@
             will result in temporary objects being created during steady-state logging.
             </p>
             <p>
-              <b>Note 2:</b> the Async Logger Timeout wait strategy (the default) and the Block wait strategy
+              <b>Note 2:</b> as of version 2.18.0, the default Async Logger wait strategy used by Log4j
+              (Timeout) is garbage-free. Some of the wait strategies included in LMAX disruptor 3.4.4,
+              especially <tt>TimeoutBlockingWaitStrategy</tt> and <tt>BlockingWaitStrategy</tt> (Block)
+              are not garbage-free since they
               cause <tt>java.util.concurrent.locks.AbstractQueuedSynchronizer$Node</tt> objects to be created.
-              The Yield and Sleep wait strategies are garbage-free. (See
+              The default wait strategy used by Log4j uses a synchronized block instead of a ReentrantLock to avoid this problem.
+              The Yield and Sleep wait strategies are garbage-free. (For configuring predefined wait strategies, see
               <a href="async.html#SysPropsAllAsync">here</a> and
-              <a href="async.html#SysPropsMixedSync-Async">here</a>.)
+              <a href="async.html#SysPropsMixedSync-Async">here</a>,
+              you may also configure a <a href="async.html#WaitStrategy">custom wait strategy</a>.)
             </p>
           </td></tr></table>
           <h4>Disabling Garbage-free Logging</h4>
@@ -129,8 +134,8 @@
               objects are created for each log event.</li>
             <li><tt>log4j2.enableDirectEncoders</tt> - if "true" (the default) log events are converted to text and this
               text is converted to bytes without creating temporary objects. Note:
-              <em>synchronous</em> logging performance may be worse for multi-threaded applications in this mode due to
-              synchronization on the shared buffer. If your application is multi-threaded and logging performance
+              <em>synchronous</em> logging performance may be worse for multithreaded applications in this mode due to
+              synchronization on the shared buffer. If your application is multithreaded and logging performance
               is important, consider using Async Loggers.
               </li>
             <li>The ThreadContext map is <em>not</em> garbage-free by default, but from Log4j 2.7 it can be configured
@@ -410,7 +415,7 @@
           </p>
           <p>
             An alternative is to implement the
-            <a href="http://logging.apache.org/log4j/2.x/log4j-api/xref/org/apache/logging/log4j/util/StringBuilderFormattable.html"><tt>org.apache.logging.log4j.util.StringBuilderFormattable</tt></a>
+            <a href="https://logging.apache.org/log4j/2.x/log4j-api/xref/org/apache/logging/log4j/util/StringBuilderFormattable.html"><tt>org.apache.logging.log4j.util.StringBuilderFormattable</tt></a>
             interface.
             If an object is logged that implements this interface, its <tt>formatTo</tt> method is called instead of
             <tt>toString()</tt>.
@@ -549,7 +554,7 @@ public void garbageFree() {
         <p><img src="../images/ResponseTimeSyncClassicVsGcFree.png" /></p>
         <p>The above results are obtained with the ResponseTimeTest class which can be found in the Log4j 2
           unit test source directory, running on JDK 1.8.0_45 on RHEL 6.5 (Linux 2.6.32-573.1.1.el6.x86_64)
-          with 10-core Xeon CPU E5-2660 v3 @2.60GHz with hyperthreading switched on (20 virtual cores).</p>
+          with 10-core Xeon CPU E5-2660 v3 @2.60GHz with hyper-threading switched on (20 virtual cores).</p>
 
         <a name="Throughput" />
         <h4>Classic Logging has Slightly Higher Throughput</h4>
@@ -560,7 +565,7 @@ public void garbageFree() {
         <p><img src="../images/garbage-free2.6-SyncThroughputLinux.png"
             alt="Throughput of Log4j 2.6 in garbage-free mode is slightly worse than in classic mode, but on par with 2.5 and much better than alternatives logging libraries" /></p>
         <p>The results above are obtained with the
-          <a href="http://openjdk.java.net/projects/code-tools/jmh/">JMH</a> Java benchmark harness.
+          <a href="https://openjdk.java.net/projects/code-tools/jmh/">JMH</a> Java benchmark harness.
           See the FileAppenderBenchmark source code in the log4j-perf module.</p>
       </subsection>
       <a name="UnderTheHood" />

@@ -35,7 +35,7 @@ Solutions for this are to:
 to the operating system so that the output can be piped into a file. The overhead of all this is measurably slower
 than just writing directly to a file as can be seen in these benchmark results where logging 
 to stdout is 16-20 times slower over repeated runs than logging directly to the file. The results below were obtained by 
-running the [Output Benchmark](https://github.com/apache/logging-log4j2/blob/release-2.x/log4j-perf/src/main/java/org/apache/logging/log4j/perf/jmh/OutputBenchmark.java)
+running the [Output Benchmark](https://github.com/apache/logging-log4j2/blob/2.x/log4j-perf/src/main/java/org/apache/logging/log4j/perf/jmh/OutputBenchmark.java)
 on a 2018 MacBook Pro with a 2.9GHz Intel Core i9 processor and a 1TB SSD.  However, these results alone would not be 
 enough to argue against writing to the standard output stream as they only amount to about 14-25 microseconds 
 per logging call vs 1.5 microseconds when writing to the file. 
@@ -447,7 +447,7 @@ Log4j. For example, since it cannot add or modify any Filters other than the log
 all log events for a specific user or customer to temporarily be logged 
 (see [DynamicThresholdFilter](filters.html#DynamicThresholdFilter) or 
 [ThreadContextMapFilter](filters.html#ThreadContextMapFilter)) or any other kinds of changes to filters. 
-Also, in a micro-services, clustered environment it is quite likely that these changes will need to be propagated
+Also, in a microservices, clustered environment it is quite likely that these changes will need to be propagated
 to multiple servers at the same time. Trying to achieve this via REST calls could be difficult.
   
 Since its first release Log4j has supported reconfiguration through a file.

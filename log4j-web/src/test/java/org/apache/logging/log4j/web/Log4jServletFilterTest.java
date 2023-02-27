@@ -72,9 +72,9 @@ public class Log4jServletFilterTest {
 
     @Test
     public void testDestroy() {
-    	assertThrows(IllegalStateException.class, () -> {
-    		this.filter.destroy();
-    	});
+        assertThrows(IllegalStateException.class, () -> {
+            this.filter.destroy();
+        });
     }
 
     @Test
@@ -93,6 +93,7 @@ public class Log4jServletFilterTest {
         then(chain).should().doFilter(same(request), same(response));
         then(chain).shouldHaveNoMoreInteractions();
         then(initializer).should().clearLoggerContext();
+        then(request).should().removeAttribute(Log4jServletFilter.ALREADY_FILTERED_ATTRIBUTE);
     }
 
     @Test

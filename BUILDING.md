@@ -14,64 +14,52 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-# Building Log4j 2
 
-To build Log4j 2, you need a JDK implementation version 1.7 or greater, JDK
-version 9, and Apache Maven 3.x.
+# Requirements
 
-Log4j 2.x uses the Java 9 compiler in addition to
-the Java version installed in the path. This is accomplished by using Maven's toolchains support.
-Log4j 2 provides sample toolchains XML files in the root folder. This may be used by
-modifying it and installing the file as toolchains.xml in the .m2 folder or by using the
-following when invoking Maven.
+* JDK 8 and 9+
+* Apache Maven 3.x
+* A modern Linux, OSX, or Windows host
 
-```
-[Macintosh] -t ./toolchains-sample-mac.xml
-[Windows] -t ./toolchains-sample-win.xml
-[Linux] -t ./toolchains-sample-linux.xml
-```
+<a name="toolchains"></a>
+# Configuring Maven Toolchains
 
-To perform the license release audit, a.k.a. "RAT check", run.
+Maven Toolchains is used to employ multiple JDKs required for compilation.
+You either need to have a user-level configuration in `~/.m2/toolchains.xml` or explicitly provide one to the Maven: `./mvnw --global-toolchains /path/to/toolchains.xml`.
+See [`.github/workflows/maven-toolchains.xml`](.github/workflows/maven-toolchains.xml) used by CI for a sample Maven Toolchains configuration.
+Note that this file requires `JAVA_HOME_8_X64` and `JAVA_HOME_11_X64` environment variables to be defined, though these can very well be hardcoded.
 
-    mvn apache-rat:check
+<a name="building"></a>
+# Building the sources
 
-To build the site with Java 7, make sure you give Maven enough memory using
-`MAVEN_OPTS` with options appropriate for your JVM. Alternatively, you can
-build with Java 8 and not deal with `MAVEN_OPTS`.
+You can build and verify the sources as follows:
 
-To install the jars in your local Maven repository, from a command line, run:
+    ./mvnw verify
 
-    mvn clean install
+`verify` goal runs validation and test steps next to building (i.e., compiling) the sources.
+To speed up the build, you can skip verification:
 
-Once install is run, you can run the Clirr check on the API and 1.2 API modules:
+    ./mvnw -DskipTests package
 
-    mvn clirr:check -pl log4j-api
+If you want to install generated artifacts to your local Maven repository, replace above `verify` and/or `package` goals with `install`.
 
-    mvn clirr:check -pl log4j-1.2-api
+<a name="dns"></a>
+## DNS lookups in tests
 
-Next, to build the site:
+Note that if your `/etc/hosts` file does not include an entry for your computer's hostname, then
+many unit tests may execute slow due to DNS lookups to translate your hostname to an IP address in
+[`InetAddress.getLocalHost()`](http://docs.oracle.com/javase/7/docs/api/java/net/InetAddress.html#getLocalHost()).
+To remedy this, you can execute the following:
 
-If Java 8 runs out of memory building the site, you will need:
+    printf '127.0.0.1 %s\n::1 %s\n' `hostname` `hostname` | sudo tee -a /etc/hosts
 
-    set MAVEN_OPTS=-Xmx2000m -XX:MaxPermSize=384m
+<a name="website"></a>
+# Building the website and manual
 
-    mvn site
+You can build the website and manual as follows:
 
-On Windows, use a local staging directory, for example:
+    ./mvnw site
 
-    mvn site:stage-deploy -DstagingSiteURL=file:///%HOMEDRIVE%%HOMEPATH%/log4j
+And view it using a simple HTTP server, e.g., the one comes with the Python:
 
-On UNIX, use a local staging directory, for example:
-
-    mvn site:stage-deploy -DstagingSiteURL=file:///$HOME/log4j
-
-To test, run:
-
-    mvn clean install
-
-## Testing in Docker
-
-In order to run a clean test using the minimum version of the JDK along with a
-proper Linux environment, run:
-
-    docker build .
+    python3 -m http.server -d target/site

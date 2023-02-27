@@ -16,18 +16,18 @@
  */
 package org.apache.logging.log4j.core.impl;
 
-import org.apache.logging.log4j.core.util.Loader;
-import org.apache.logging.log4j.status.StatusLogger;
-import org.apache.logging.log4j.util.LoaderUtil;
-
 import java.net.URL;
 import java.security.CodeSource;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Stack;
+
+import org.apache.logging.log4j.core.util.Loader;
+import org.apache.logging.log4j.status.StatusLogger;
+import org.apache.logging.log4j.util.LoaderUtil;
 
 /**
  * {@link ThrowableProxyHelper} provides utilities required to initialize a new {@link ThrowableProxy}
@@ -67,7 +67,7 @@ class ThrowableProxyHelper {
      */
     static ExtendedStackTraceElement[] toExtendedStackTrace(
             final ThrowableProxy src,
-            final Stack<Class<?>> stack, final Map<String, CacheEntry> map,
+            final Deque<Class<?>> stack, final Map<String, CacheEntry> map,
             final StackTraceElement[] rootTrace,
             final StackTraceElement[] stackTrace) {
         int stackLength;
@@ -85,7 +85,7 @@ class ThrowableProxyHelper {
             stackLength = stackTrace.length;
         }
         final ExtendedStackTraceElement[] extStackTrace = new ExtendedStackTraceElement[stackLength];
-        Class<?> clazz = stack.isEmpty() ? null : stack.peek();
+        Class<?> clazz = stack.isEmpty() ? null : stack.peekLast();
         ClassLoader lastLoader = null;
         for (int i = stackLength - 1; i >= 0; --i) {
             final StackTraceElement stackTraceElement = stackTrace[i];
@@ -98,8 +98,8 @@ class ThrowableProxyHelper {
                 final CacheEntry entry = toCacheEntry(clazz, true);
                 extClassInfo = entry.element;
                 lastLoader = entry.loader;
-                stack.pop();
-                clazz = stack.isEmpty() ? null : stack.peek();
+                stack.pollLast();
+                clazz = stack.peekLast();
             } else {
                 final CacheEntry cacheEntry = map.get(className);
                 if (cacheEntry != null) {
@@ -138,7 +138,7 @@ class ThrowableProxyHelper {
                     proxies.add(new ThrowableProxy(candidate, suppressedVisited));
                 }
             }
-            return proxies.toArray(new ThrowableProxy[proxies.size()]);
+            return proxies.toArray(ThrowableProxy.EMPTY_ARRAY);
         } catch (final Exception e) {
             StatusLogger.getLogger().error(e);
         }

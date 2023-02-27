@@ -22,7 +22,7 @@ import java.util.Objects;
 
 /**
  * <em>Consider this class private.</em>
- * 
+ *
  * @see <a href="http://commons.apache.org/proper/commons-lang/">Apache Commons Lang</a>
  */
 public final class Strings {
@@ -33,35 +33,36 @@ public final class Strings {
      * The empty string.
      */
     public static final String EMPTY = "";
-    
+    private static final String COMMA_DELIMITED_RE = "\\s*,\\s*";
+
     /**
      * The empty array.
      */
     public static final String[] EMPTY_ARRAY = {};
-    
+
     /**
      * OS-dependent line separator, defaults to {@code "\n"} if the system property {@code ""line.separator"} cannot be
      * read.
      */
-    public static final String LINE_SEPARATOR = PropertiesUtil.getProperties().getStringProperty("line.separator",
+    public static final String LINE_SEPARATOR = SystemPropertiesPropertySource.getSystemProperty("line.separator",
             "\n");
 
     /**
      * Returns a double quoted string.
-     * 
+     *
      * @param str a String
      * @return {@code "str"}
      */
     public static String dquote(final String str) {
         return Chars.DQUOTE + str + Chars.DQUOTE;
     }
-    
+
     /**
      * Checks if a String is blank. A blank string is one that is either
      * {@code null}, empty, or all characters are {@link Character#isWhitespace(char)}.
      *
      * @param s the String to check, may be {@code null}
-     * @return {@code true} if the String is {@code null}, empty, or or all characters are {@link Character#isWhitespace(char)}
+     * @return {@code true} if the String is {@code null}, empty, or all characters are {@link Character#isWhitespace(char)}
      */
     public static boolean isBlank(final String s) {
         if (s == null || s.isEmpty()) {
@@ -199,6 +200,10 @@ public final class Strings {
         return buf.toString();
     }
 
+    public static String[] splitList(String string) {
+        return string != null ? string.split(COMMA_DELIMITED_RE) : new String[0];
+    }
+
     /**
      * <p>Gets the leftmost {@code len} characters of a String.</p>
      *
@@ -218,7 +223,7 @@ public final class Strings {
      * <p>
      * Copied from Apache Commons Lang org.apache.commons.lang3.StringUtils.
      * </p>
-     * 
+     *
      * @param str  the String to get the leftmost characters from, may be null
      * @param len  the length of the required String
      * @return the leftmost characters, {@code null} if null String input
@@ -238,14 +243,14 @@ public final class Strings {
 
     /**
      * Returns a quoted string.
-     * 
+     *
      * @param str a String
      * @return {@code 'str'}
      */
     public static String quote(final String str) {
         return Chars.QUOTE + str + Chars.QUOTE;
     }
-    
+
     /**
      * <p>
      * Removes control characters (char &lt;= 32) from both ends of this String returning {@code null} if the String is
@@ -280,8 +285,18 @@ public final class Strings {
     }
 
     /**
-     * Shorthand for {@code str.toUpperCase(Locale.ROOT);}
+     * Shorthand for {@code str.toLowerCase(Locale.ROOT);}
      * @param str The string to upper case.
+     * @return a new string
+     * @see String#toLowerCase(Locale)
+     */
+    public static String toRootLowerCase(final String str) {
+        return str.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Shorthand for {@code str.toUpperCase(Locale.ROOT);}
+     * @param str The string to lower case.
      * @return a new string
      * @see String#toLowerCase(Locale)
      */

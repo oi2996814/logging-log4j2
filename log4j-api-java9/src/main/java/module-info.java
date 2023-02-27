@@ -14,7 +14,14 @@
  * See the license for the specific language governing permissions and
  * limitations under the license.
  */
+import org.apache.logging.log4j.util.EnvironmentPropertySource;
+import org.apache.logging.log4j.util.PropertySource;
+import org.apache.logging.log4j.util.SystemPropertiesPropertySource;
+
 module org.apache.logging.log4j {
+    requires java.base;
+    requires static java.sql;
+
     exports org.apache.logging.log4j;
     exports org.apache.logging.log4j.message;
     exports org.apache.logging.log4j.simple;
@@ -25,4 +32,6 @@ module org.apache.logging.log4j {
     uses org.apache.logging.log4j.spi.Provider;
     uses org.apache.logging.log4j.util.PropertySource;
     uses org.apache.logging.log4j.message.ThreadDumpMessage.ThreadInfoFactory;
+
+    provides PropertySource with EnvironmentPropertySource, SystemPropertiesPropertySource;
 }

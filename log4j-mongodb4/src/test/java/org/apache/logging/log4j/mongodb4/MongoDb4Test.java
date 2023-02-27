@@ -18,11 +18,11 @@ package org.apache.logging.log4j.mongodb4;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.categories.Appenders;
-import org.apache.logging.log4j.junit.LoggerContextRule;
+import org.apache.logging.log4j.core.test.AvailablePortSystemPropertyTestRule;
+import org.apache.logging.log4j.core.test.RuleChainFactory;
+import org.apache.logging.log4j.core.test.categories.Appenders;
+import org.apache.logging.log4j.core.test.junit.LoggerContextRule;
 import org.apache.logging.log4j.mongodb4.MongoDb4TestRule.LoggingTarget;
-import org.apache.logging.log4j.test.AvailablePortSystemPropertyTestRule;
-import org.apache.logging.log4j.test.RuleChainFactory;
 import org.bson.Document;
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -30,6 +30,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.RuleChain;
 
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -55,16 +56,26 @@ public class MongoDb4Test {
     @Test
     public void test() {
         final Logger logger = LogManager.getLogger();
-        logger.info("Hello log");
+        logger.info("Hello log 1");
+        logger.info("Hello log 2", new RuntimeException("Hello ex 2"));
         try (final MongoClient mongoClient = mongoDbTestRule.getMongoClient()) {
-            final MongoDatabase database = mongoClient.getDatabase("testDb");
+            final MongoDatabase database = mongoClient.getDatabase(MongoDb4TestConstants.DATABASE_NAME);
             Assert.assertNotNull(database);
-            final MongoCollection<Document> collection = database.getCollection("testCollection");
+            final MongoCollection<Document> collection = database.getCollection(MongoDb4TestConstants.COLLECTION_NAME);
             Assert.assertNotNull(collection);
-            final Document first = collection.find().first();
-            Assert.assertNotNull(first);
-            Assert.assertEquals(first.toJson(), "Hello log", first.getString("message"));
+            final FindIterable<Document> found = collection.find();
+            final Document first = found.first();
+            Assert.assertNotNull("first", first);
+            Assert.assertEquals(first.toJson(), "Hello log 1", first.getString("message"));
             Assert.assertEquals(first.toJson(), "INFO", first.getString("level"));
+            //
+            found.skip(1);
+            final Document second = found.first();
+            Assert.assertNotNull(second);
+            Assert.assertEquals(second.toJson(), "Hello log 2", second.getString("message"));
+            Assert.assertEquals(second.toJson(), "INFO", second.getString("level"));
+            Document thrown = second.get("thrown", Document.class);
+            Assert.assertEquals(thrown.toJson(), "Hello ex 2", thrown.getString("message"));
         }
     }
 }

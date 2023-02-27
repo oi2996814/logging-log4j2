@@ -21,10 +21,11 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.util.logging.Logger;
 
-import org.apache.logging.log4j.test.appender.ListAppender;
+import org.apache.logging.log4j.core.test.appender.ListAppender;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -82,8 +83,12 @@ public class ApiLoggerTest extends AbstractLoggerTest {
         logger.setParent(null);
     }
 
-    @Test(expected = UnsupportedOperationException.class)
-    public void testSetLevelFails() throws Exception {
-        logger.setLevel(null);
+    @Test
+    public void testSetLevelDoesNotFail() throws Exception {
+        try {
+            logger.setLevel(null);
+        } catch (Throwable e) {
+            fail("should not throw");
+        }
     }
 }

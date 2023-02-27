@@ -25,8 +25,8 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.apache.logging.log4j.core.net.mock.MockSyslogServer;
-import org.apache.logging.log4j.core.net.mock.MockSyslogServerFactory;
+import org.apache.logging.log4j.core.test.net.mock.MockSyslogServer;
+import org.apache.logging.log4j.core.test.net.mock.MockSyslogServerFactory;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -38,6 +38,7 @@ import org.junit.Test;
  */
 public class SyslogAppenderTest {
 
+    // TODO Use an ephemeral port, save it in a sys prop, and update test config files.
     private static final int PORTNUM = 9999;
     private MockSyslogServer syslogServer;
 

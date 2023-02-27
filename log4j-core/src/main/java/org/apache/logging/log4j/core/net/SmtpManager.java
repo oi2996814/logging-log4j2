@@ -40,8 +40,6 @@ import javax.net.ssl.SSLSocketFactory;
 import org.apache.logging.log4j.LoggingException;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.appender.AbstractManager;
-import org.apache.logging.log4j.core.appender.ManagerFactory;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.layout.AbstractStringLayout.Serializer;
 import org.apache.logging.log4j.core.layout.PatternLayout;
@@ -49,13 +47,12 @@ import org.apache.logging.log4j.core.net.ssl.SslConfiguration;
 import org.apache.logging.log4j.core.util.CyclicBuffer;
 import org.apache.logging.log4j.core.util.NetUtils;
 import org.apache.logging.log4j.util.PropertiesUtil;
-import org.apache.logging.log4j.util.Strings;
 
 /**
  * Manager for sending SMTP events.
  */
-public class SmtpManager extends AbstractManager {
-    private static final SMTPManagerFactory FACTORY = new SMTPManagerFactory();
+public class SmtpManager extends MailManager {
+    public static final SMTPManagerFactory FACTORY = new SMTPManagerFactory();
 
     private final Session session;
 
@@ -67,9 +64,12 @@ public class SmtpManager extends AbstractManager {
 
     private static MimeMessage createMimeMessage(final FactoryData data, final Session session, final LogEvent appendEvent)
             throws MessagingException {
-        return new MimeMessageBuilder(session).setFrom(data.from).setReplyTo(data.replyto)
-                .setRecipients(Message.RecipientType.TO, data.to).setRecipients(Message.RecipientType.CC, data.cc)
-                .setRecipients(Message.RecipientType.BCC, data.bcc).setSubject(data.subject.toSerializable(appendEvent))
+        return new MimeMessageBuilder(session).setFrom(data.getFrom())
+                .setReplyTo(data.getReplyTo())
+                .setRecipients(Message.RecipientType.TO, data.getTo())
+                .setRecipients(Message.RecipientType.CC, data.getCc())
+                .setRecipients(Message.RecipientType.BCC, data.getBcc())
+                .setSubject(data.getSubjectSerializer().toSerializable(appendEvent))
                 .build();
     }
 
@@ -79,13 +79,15 @@ public class SmtpManager extends AbstractManager {
         this.session = session;
         this.message = message;
         this.data = data;
-        this.buffer = new CyclicBuffer<>(LogEvent.class, data.numElements);
+        this.buffer = new CyclicBuffer<>(LogEvent.class, data.getBufferSize());
     }
 
+    @Override
     public void add(LogEvent event) {
         buffer.add(event.toImmutable());
     }
 
+    @Deprecated
     public static SmtpManager getSmtpManager(
                                              final Configuration config,
                                              final String to, final String cc, final String bcc,
@@ -94,79 +96,18 @@ public class SmtpManager extends AbstractManager {
                                              final int port, final String username, final String password,
                                              final boolean isDebug, final String filterName, final int numElements,
                                              final SslConfiguration sslConfiguration) {
-        if (Strings.isEmpty(protocol)) {
-            protocol = "smtp";
-        }
+        final Serializer subjectSerializer = PatternLayout.newSerializerBuilder()
+                .setConfiguration(config)
+                .setPattern(subject)
+                .build();
+        final FactoryData data = new FactoryData(to, cc, bcc, from, replyTo, subject, subjectSerializer, protocol, host,
+                port, username, password, isDebug, numElements, sslConfiguration, filterName);
 
-        final String name = createManagerName(to, cc, bcc, from, replyTo, subject, protocol, host, port, username, isDebug, filterName);
-        final Serializer subjectSerializer = PatternLayout.newSerializerBuilder().setConfiguration(config).setPattern(subject).build();
-
-        return getManager(name, FACTORY, new FactoryData(to, cc, bcc, from, replyTo, subjectSerializer,
-            protocol, host, port, username, password, isDebug, numElements, sslConfiguration));
+        return (SmtpManager) getManager(data.getManagerName(), FACTORY, data);
 
     }
 
-    /**
-     * Creates a unique-per-configuration name for an smtp manager using the specified the parameters.<br>
-     * Using such a name allows us to maintain singletons per unique configurations.
-     *
-     * @return smtp manager name
-     */
-    static String createManagerName(
-            final String to,
-            final String cc,
-            final String bcc,
-            final String from,
-            final String replyTo,
-            final String subject,
-            final String protocol,
-            final String host,
-            final int port,
-            final String username,
-            final boolean isDebug,
-            final String filterName) {
-
-        final StringBuilder sb = new StringBuilder();
-
-        if (to != null) {
-            sb.append(to);
-        }
-        sb.append(':');
-        if (cc != null) {
-            sb.append(cc);
-        }
-        sb.append(':');
-        if (bcc != null) {
-            sb.append(bcc);
-        }
-        sb.append(':');
-        if (from != null) {
-            sb.append(from);
-        }
-        sb.append(':');
-        if (replyTo != null) {
-            sb.append(replyTo);
-        }
-        sb.append(':');
-        if (subject != null) {
-            sb.append(subject);
-        }
-        sb.append(':');
-        sb.append(protocol).append(':').append(host).append(':').append(port).append(':');
-        if (username != null) {
-            sb.append(username);
-        }
-        sb.append(isDebug ? ":debug:" : "::");
-        sb.append(filterName);
-
-        return "SMTP:" + sb.toString();
-    }
-
-    /**
-     * Send the contents of the cyclic buffer as an e-mail message.
-     * @param layout The layout for formatting the events.
-     * @param appendEvent The event that triggered the send.
-     */
+    @Override
     public void sendEvents(final Layout<?> layout, final LogEvent appendEvent) {
         if (message == null) {
             connect(appendEvent);
@@ -184,7 +125,7 @@ public class SmtpManager extends AbstractManager {
             final InternetHeaders headers = getHeaders(contentType, encoding);
             final MimeMultipart mp = getMimeMultipart(encodedBytes, headers);
 
-            final String subject = data.subject.toSerializable(appendEvent);
+            final String subject = data.getSubjectSerializer().toSerializable(appendEvent);
 
             sendMultipartMessage(message, mp, subject);
         } catch (final MessagingException | IOException | RuntimeException e) {
@@ -292,46 +233,6 @@ public class SmtpManager extends AbstractManager {
         }
     }
 
-    /**
-     * Factory data.
-     */
-    private static class FactoryData {
-        private final String to;
-        private final String cc;
-        private final String bcc;
-        private final String from;
-        private final String replyto;
-        private final Serializer subject;
-        private final String protocol;
-        private final String host;
-        private final int port;
-        private final String username;
-        private final String password;
-        private final boolean isDebug;
-        private final int numElements;
-        private final SslConfiguration sslConfiguration;
-
-        public FactoryData(final String to, final String cc, final String bcc, final String from, final String replyTo,
-                           final Serializer subjectSerializer, final String protocol, final String host, final int port,
-                           final String username, final String password, final boolean isDebug, final int numElements,
-                           final SslConfiguration sslConfiguration) {
-            this.to = to;
-            this.cc = cc;
-            this.bcc = bcc;
-            this.from = from;
-            this.replyto = replyTo;
-            this.subject = subjectSerializer;
-            this.protocol = protocol;
-            this.host = host;
-            this.port = port;
-            this.username = username;
-            this.password = password;
-            this.isDebug = isDebug;
-            this.numElements = numElements;
-            this.sslConfiguration = sslConfiguration;
-        }
-    }
-
     private synchronized void connect(final LogEvent appendEvent) {
         if (message != null) {
             return;
@@ -347,33 +248,35 @@ public class SmtpManager extends AbstractManager {
     /**
      * Factory to create the SMTP Manager.
      */
-    private static class SMTPManagerFactory implements ManagerFactory<SmtpManager, FactoryData> {
+    public static class SMTPManagerFactory implements MailManagerFactory {
 
         @Override
         public SmtpManager createManager(final String name, final FactoryData data) {
-            final String prefix = "mail." + data.protocol;
+            final String smtpProtocol = data.getSmtpProtocol();
+            final String prefix = "mail." + smtpProtocol;
 
             final Properties properties = PropertiesUtil.getSystemProperties();
-            properties.setProperty("mail.transport.protocol", data.protocol);
+            properties.setProperty("mail.transport.protocol", smtpProtocol);
             if (properties.getProperty("mail.host") == null) {
                 // Prevent an UnknownHostException in Java 7
                 properties.setProperty("mail.host", NetUtils.getLocalHostname());
             }
 
-            if (null != data.host) {
-                properties.setProperty(prefix + ".host", data.host);
+            final String smtpHost = data.getSmtpHost();
+            if (null != smtpHost) {
+                properties.setProperty(prefix + ".host", smtpHost);
             }
-            if (data.port > 0) {
-                properties.setProperty(prefix + ".port", String.valueOf(data.port));
+            if (data.getSmtpPort() > 0) {
+                properties.setProperty(prefix + ".port", String.valueOf(data.getSmtpPort()));
             }
 
-            final Authenticator authenticator = buildAuthenticator(data.username, data.password);
+            final Authenticator authenticator = buildAuthenticator(data.getSmtpUsername(), data.getSmtpPassword());
             if (null != authenticator) {
                 properties.setProperty(prefix + ".auth", "true");
             }
 
-            if (data.protocol.equals("smtps")) {
-                final SslConfiguration sslConfiguration = data.sslConfiguration;
+            if (smtpProtocol.equals("smtps")) {
+                final SslConfiguration sslConfiguration = data.getSslConfiguration();
                 if (sslConfiguration != null) {
                     final SSLSocketFactory sslSocketFactory = sslConfiguration.getSslSocketFactory();
                     properties.put(prefix + ".ssl.socketFactory", sslSocketFactory);
@@ -382,8 +285,8 @@ public class SmtpManager extends AbstractManager {
             }
 
             final Session session = Session.getInstance(properties, authenticator);
-            session.setProtocolForAddress("rfc822", data.protocol);
-            session.setDebug(data.isDebug);
+            session.setProtocolForAddress("rfc822", smtpProtocol);
+            session.setDebug(data.isSmtpDebug());
             return new SmtpManager(name, session, null, data);
         }
 

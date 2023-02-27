@@ -20,8 +20,8 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
-import org.apache.logging.log4j.junit.LoggerContextRule;
-import org.apache.logging.log4j.test.appender.ListAppender;
+import org.apache.logging.log4j.core.test.appender.ListAppender;
+import org.apache.logging.log4j.core.test.junit.LoggerContextRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -34,7 +34,7 @@ public class CallerInformationTest {
     public static final LoggerContextRule ctx = new LoggerContextRule(CONFIG);
 
     @Test
-    public void testClassLogger() throws Exception {
+    public void testClassLogger() {
         final ListAppender app = ctx.getListAppender("Class").clear();
         final Logger logger = Logger.getLogger("ClassLogger");
         logger.info("Ignored message contents.");
@@ -48,7 +48,7 @@ public class CallerInformationTest {
     }
 
     @Test
-    public void testMethodLogger() throws Exception {
+    public void testMethodLogger() {
         final ListAppender app = ctx.getListAppender("Method").clear();
         final Logger logger = Logger.getLogger("MethodLogger");
         logger.info("More messages.");

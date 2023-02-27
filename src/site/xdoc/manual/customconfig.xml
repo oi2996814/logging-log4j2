@@ -61,7 +61,7 @@
               for the component you want to configure.
             </p>
             <p>
-              For example, the builder does not know what sub-components can be configured on specific components
+              For example, the builder does not know what subcomponents can be configured on specific components
               such as the RollingFileAppender vs. the RoutingAppender. To specify a triggering policy on a 
               RollingFileAppender you would use builder.newComponent().
             </p>
@@ -266,7 +266,7 @@ public class MyXMLConfiguration extends XMLConfiguration {
     @Override
     protected void doConfigure() {
         super.doConfigure();
-        final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        final LoggerContext context = (LoggerContext) LogManager.getContext(false);
         final Configuration config = context.getConfiguration();
         final Layout layout = PatternLayout.createDefaultLayout(config);
         final Appender appender = FileAppender.createAppender("target/test.log", "false", "false", "File", "true",

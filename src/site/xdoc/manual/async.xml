@@ -237,10 +237,11 @@ or
             </td>
             <td>
               Valid values: Block, Timeout, Sleep, Yield.
+              (See also the <a href="#WaitStrategy">Custom WaitStrategy</a> section below.)
               <br />
               <tt>Block</tt> is a strategy that uses a lock and condition variable for the I/O thread waiting for log events.
               Block can be used when throughput and low-latency are not as important as CPU resource.
-              Recommended for resource constrained/virtualised environments.
+              Recommended for resource constrained/virtualized environments.
               <br />
               <tt>Timeout</tt> is a variation of the <tt>Block</tt> strategy that will periodically
               wake up from the lock condition await() call. This ensures that if a notification is missed somehow
@@ -449,7 +450,7 @@ or
               or shrink during the life of the system.
               <p>
                 When the application is logging faster than the underlying appender can keep up with
-                for a long enough time to fill up the queue, the behavious is determined by the
+                for a long enough time to fill up the queue, the behaviour is determined by the
                 <a href="../log4j-core/apidocs/org/apache/logging/log4j/core/async/AsyncQueueFullPolicy.html">AsyncQueueFullPolicy</a>.
               </p>
             </td>
@@ -461,10 +462,11 @@ or
             </td>
             <td>
               Valid values: Block, Timeout, Sleep, Yield.
+              (See also the <a href="#WaitStrategy">Custom WaitStrategy</a> section below.)
               <br />
               <tt>Block</tt> is a strategy that uses a lock and condition variable for the I/O thread waiting for log events.
               Block can be used when throughput and low-latency are not as important as CPU resource.
-              Recommended for resource constrained/virtualised environments.
+              Recommended for resource constrained/virtualized environments.
               <br />
               <tt>Timeout</tt> is a variation of the <tt>Block</tt> strategy that will periodically
               wake up from the lock condition await() call. This ensures that if a notification is missed somehow
@@ -535,6 +537,60 @@ or
             <tt>log4j2.discardThreshold</tt></a>.
         </p>
       </subsection>
+      <a name="WaitStrategy" />
+      <subsection name="Custom WaitStrategy">
+        <p>
+          The system properties mentioned above allow only choice from among a fixed set of predefined WaitStrategies.
+          There may be cases where you want to configure a custom WaitStrategy that is not in this list.
+          This is possible by using a <code>AsyncWaitStrategyFactory</code> element in the Log4j configuration.
+        </p>
+        <p>
+          A configuration that configures a custom WaitStrategy can look as follows:
+        </p>
+        <pre class="prettyprint linenums"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+  <AsyncWaitStrategyFactory
+      class="my.custom.AsyncWaitStrategyFactory" />
+
+  <Appenders>
+    <File name="MyFile" fileName="logs/app.log">
+      <PatternLayout pattern="%d %p %c{1.} [%t] %m%n" />
+    </File>
+  </Appenders>
+  <Loggers>
+    <AsyncRoot level="info">
+      <AppenderRef ref="MyFile"/>
+    </AsyncRoot>
+  </Loggers>
+</Configuration>]]></pre>
+        <p>
+          The specified class must implement the <code>org.apache.logging.log4j.core.async.AsyncWaitStrategyFactory</code>
+          interface, which is defined as follows:
+        </p>
+        <pre class="prettyprint linenums">
+public interface AsyncWaitStrategyFactory {
+  /**
+  * Returns a non-null implementation of the LMAX Disruptor's WaitStrategy interface.
+  * This WaitStrategy will be used by Log4j Async Loggers and Async LoggerConfigs.
+  *
+  * @return the WaitStrategy instance to be used by Async Loggers and Async LoggerConfigs
+  */
+  WaitStrategy createWaitStrategy();
+}
+        </pre>
+        <p>
+          The specified class must also have a public no-argument constructor;
+          Log4j will instantiate an instance of the specified factory class and use this factory
+          to create the WaitStrategy used by all Async Loggers.
+        </p>
+        <p>
+          WaitStrategy-related system properties are ignored if a <code>AsyncWaitStrategyFactory</code>
+          is configured.
+        </p>
+      </subsection>
+
+
       <a name="Location" />
       <subsection name="Location, location, location...">
         <p>
@@ -609,13 +665,13 @@ or
           logback-1.0.10, with similar results. For asynchronous appenders, total logging throughput of all
           threads together remains roughly constant when adding more threads.
           Asynchronous loggers make more effective use of the multiple cores
-          available on the machine in multi-threaded scenarios.
+          available on the machine in multithreaded scenarios.
         </p>
         <p>
           <img src="../images/async-throughput-comparison.png" alt="Async loggers have the highest throughput." />
         </p>
         <p>On Solaris 10 (64bit) with JDK1.7.0_06, 4-core Xeon X5570 dual CPU
-          @2.93Ghz with hyperthreading switched on (16 virtual cores):
+          @2.93Ghz with hyper-threading switched on (16 virtual cores):
         </p>
         <table>
           <caption align="top">Throughput per thread in
@@ -713,7 +769,7 @@ or
         </table>
         <p />
         <p>On Windows 7 (64bit) with JDK1.7.0_11, 2-core Intel i5-3317u CPU
-          @1.70Ghz with hyperthreading switched on (4 virtual cores):
+          @1.70Ghz with hyper-threading switched on (4 virtual cores):
         </p>
         <table>
           <caption align="top">Throughput per thread in
@@ -816,7 +872,7 @@ or
             From this release we will try to do better and report response time latency
             across the full range of percentages, including all the outliers.
             Our thanks to Gil Tene for his
-            <a href="http://www.infoq.com/presentations/latency-response-time">How NOT to measure latency</a>
+            <a href="https://www.infoq.com/presentations/latency-response-time">How NOT to measure latency</a>
             presentation. (Now we know why this is also known as the "Oh s#@t!" presentation.)
           </td></tr>
         </table>
@@ -918,7 +974,7 @@ or
         <p>
           Asynchronous Loggers are implemented using the
           <a href="https://lmax-exchange.github.io/disruptor/">LMAX Disruptor</a>
-          inter-thread messaging library. From the LMAX web site:
+          inter-thread messaging library. From the LMAX website:
         </p>
         <blockquote>
           <p>... using queues to pass data between stages of the system was introducing latency, so we

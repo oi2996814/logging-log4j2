@@ -25,8 +25,8 @@ import org.apache.logging.log4j.util.Supplier;
  * by calling one of the Logger methods that return a LogBuilder.
  */
 public interface LogBuilder {
-
-    public static final LogBuilder NOOP = new LogBuilder() {};
+    /** NOOP Logbuilder */
+    LogBuilder NOOP = new LogBuilder() { };
 
     /**
      * Includes a Marker in the log event. Interface default method does nothing.
@@ -110,6 +110,17 @@ public interface LogBuilder {
      * @param messageSupplier The supplier of the message to log.
      */
     default void log(Supplier<Message> messageSupplier) {
+    }
+
+    /**
+     * Causes all the data collected to be logged along with the message.
+     *
+     * @param messageSupplier The supplier of the message to log.
+     * @return the message logger or {@literal null} if no logging occurred.
+     * @since 2.20
+     */
+    default Message logAndGet(final Supplier<Message> messageSupplier) {
+        return null;
     }
 
     /**

@@ -25,6 +25,7 @@ This page explains how to migrate applications or libraries currently using the 
 to use Log4j v2 as their main logging framework.
 
 <a name="Log4j1.2Bridge"/>
+
 ### Option 1: use the Log4j 1.x bridge (log4j-1.2-api)
 
 You may be able to convert an application to Log4j 2 _without any code changes_
@@ -47,6 +48,7 @@ For most applications this is sufficient.
 This is a low-effort way to migrate, and may also allow for migration to proceed gradually over time.
 
 <a name="EnablingLog4j1.2Bridge"/>
+
 #### Enabling the Log4j 1.x bridge
 
 Enable the Log4j 1.x bridge via one of the following steps:
@@ -58,6 +60,7 @@ Enable the Log4j 1.x bridge via one of the following steps:
    files must have a file extension of either ".properties" or ".xml".
 
 <a name="APICompatibility"/>
+
 #### API Compatibility
 
 Log4j 2 provides support for the Log4j 1 logging methods by providing alternate implementations
@@ -66,6 +69,7 @@ distributed with the project. All calls to perform logging will result in the da
 to be forwarded to the Log4j2 API where they can be processed by implementations of the Log4j 2 API.
 
 <a name="ConfigurationCompatibility"/>
+
 #### Configuration Compatibility
 
 Log4j 2 provides support for Log4j 1 configuration files. Configuration of the Appenders, Layouts
@@ -99,7 +103,7 @@ consider [migrating your configuration](migration.html#Log4j2ConfigurationFormat
 * JMSAppender
 * SMTPAppender
 * SocketAppender (Requires the use of the SerializedLayout which is a security risk)
-* SocketHubAppender (Requires the use of the SerializedLayout which is a securiy risk)
+* SocketHubAppender (Requires the use of the SerializedLayout which is a security risk)
 * TelnetAppender (Security risk)
 
 ###### Rewrite Policies
@@ -113,6 +117,7 @@ Log4j 2 currently ignores renderers.
 
 
 <a name="Log4j1.2BridgeLimitations"/>
+
 #### Limitations of the Log4j 1.x bridge
 
 Applications can migrate by just using the bridge without further code changes,
@@ -126,7 +131,7 @@ if they meet the following requirements:
 
 #### When to stop using the Log4j 1.x bridge
 
-Once you have migrated all of your own application and library code under your control, you may not need the bridge any more.
+Once you have migrated all of your own application and library code under your control, you may not need the bridge anymore.
 Note that when you use a library/framework that can be configured to use several logging frameworks,
 then you typically don't need the log4j-1.2-api bridge either,
 as you may be able to directly configure it to use Log4j v2 instead v1.
@@ -139,10 +144,11 @@ If you own or can contribute open source to the library you depend on, consider 
 
 While the Log4j 1.x bridge supports logging configurations that use the Log4j 1.x properties or XML format,
 migrating to the new 2.x format is not difficult.
-The Log4j 2 web site contains extensive documentation on the 2.x configuration format.
+The Log4j 2 website contains extensive documentation on the 2.x configuration format.
 Examples for migrating logging configurations from the v1 format to the v2 format are below.
 
 <a name="Log4j2API"/>
+
 ### Option 2: convert your application to the Log4j 2 API (log4j-api)
 
 The other migration option involves changing your application code to use the Log4j 2 API.
@@ -165,6 +171,7 @@ made.
 | [`org.apache.log4j.MDC`](http://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/MDC.html) and [`org.apache.log4j.NDC`](http://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/NDC.html) | [Thread Context](thread-context.html) |
 
 <a name="Log4j2ConfigurationFormat"/>
+
 ### Migrating logging configurations to the Log4j 2 format
 Although the Log4j 2 configuration syntax is different from that of Log4j 1.x, most, if not all, of
 the same functionality is available.
@@ -177,7 +184,7 @@ for more details. For example, using a lookup for the system property named `cat
 in Log4j 1.x, the syntax would be `${catalina.base}`. In Log4j 2, the syntax would be
 `${sys:catalina.base}`.
 
-####Layouts
+#### Layouts
 
 Log4j 1.x has a XMLLayout which is different from the XmlLayout in Log4j 2. The log4j-1.2-api module
 contains a `Log4j1XmlLayout` that produces output in the Log4j 1.x format.

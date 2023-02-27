@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.logging.log4j.core.util.Integers;
+
 /**
  * Generates source code for custom or extended logger wrappers.
  * <p>
@@ -1039,7 +1041,7 @@ public final class Generate {
         LevelInfo(final String description) {
             final String[] parts = description.split("=");
             name = parts[0];
-            intLevel = Integer.parseInt(parts[1]);
+            intLevel = Integers.parseInt(parts[1]);
         }
 
         public static List<LevelInfo> parse(final List<String> values, final Class<?> generator) {
@@ -1059,6 +1061,30 @@ public final class Generate {
 
     private static void generate(final String[] args, final Type type) {
         generate(args, type, System.out);
+    }
+
+    /**
+     * Generates source code for extended logger wrappers that provide convenience methods for the specified custom
+     * levels.
+     *
+     * @param args className of the custom logger to generate, followed by a NAME=intLevel pair for each custom log
+     *            level to generate convenience methods for
+     * @param printStream the stream to write the generated source code to
+     */
+    public static void generateExtend(final String[] args, final PrintStream printStream) {
+        generate(args, Type.EXTEND, printStream);
+    }
+
+    /**
+     * Generates source code for custom logger wrappers that only provide convenience methods for the specified
+     * custom levels, not for the standard built-in levels.
+     *
+     * @param args className of the custom logger to generate, followed by a NAME=intLevel pair for each custom log
+     *            level to generate convenience methods for
+     * @param printStream the stream to write the generated source code to
+     */
+    public static void generateCustom(final String[] args, final PrintStream printStream) {
+        generate(args, Type.CUSTOM, printStream);
     }
 
     static void generate(final String[] args, final Type type, final PrintStream printStream) {

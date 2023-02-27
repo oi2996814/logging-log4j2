@@ -19,11 +19,13 @@ package org.apache.logging.log4j.core;
 import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogBuilder;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LocationAwareReliabilityStrategy;
@@ -299,7 +301,7 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
     public Iterator<Filter> getFilters() {
         final Filter filter = privateConfig.loggerConfig.getFilter();
         if (filter == null) {
-            return new ArrayList<Filter>().iterator();
+            return Collections.emptyIterator();
         } else if (filter instanceof CompositeFilter) {
             return ((CompositeFilter) filter).iterator();
         } else {
@@ -361,6 +363,16 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
      */
     public void setAdditive(final boolean additive) {
         privateConfig.config.setLoggerAdditive(this, additive);
+    }
+
+    @Override
+    public LogBuilder atLevel(Level level) {
+        // A global filter might accept messages less specific than level.
+        // Therefore we return always a functional builder.
+        if (privateConfig.hasFilter()) {
+            return getLogBuilder(level);
+        }
+        return super.atLevel(level);
     }
 
     /**
@@ -428,6 +440,10 @@ public class Logger extends AbstractLogger implements Supplier<LoggerConfig> {
         // LOG4J2-151: changed visibility to public
         public void logEvent(final LogEvent event) {
             loggerConfig.log(event);
+        }
+
+        boolean hasFilter() {
+            return config.getFilter() != null;
         }
 
         boolean filter(final Level level, final Marker marker, final String msg) {

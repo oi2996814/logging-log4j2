@@ -103,11 +103,11 @@ public final class PatternParser {
      * Constructor.
      *
      * @param config
-     *            The current Configuration.
+     *            The current Configuration or {@code null}.
      * @param converterKey
      *            The key to lookup the converters.
      * @param expected
-     *            The expected base Class of each Converter.
+     *            The expected base Class of each Converter or {@code null}.
      */
     public PatternParser(final Configuration config, final String converterKey, final Class<?> expected) {
         this(config, converterKey, expected, null);
@@ -117,13 +117,13 @@ public final class PatternParser {
      * Constructor.
      *
      * @param config
-     *            The current Configuration.
+     *            The current Configuration or {@code null}.
      * @param converterKey
      *            The key to lookup the converters.
      * @param expectedClass
-     *            The expected base Class of each Converter.
+     *            The expected base Class of each Converter or {@code null}.
      * @param filterClass
-     *            Filter the returned plugins after calling the plugin manager.
+     *            Filter the returned plugins after calling the plugin manager, can be {@code null}.
      */
     public PatternParser(final Configuration config, final String converterKey, final Class<?> expectedClass,
             final Class<?> filterClass) {
@@ -570,7 +570,7 @@ public final class PatternParser {
             boolean errors = false;
             for (final Class<?> clazz : parmTypes) {
                 if (clazz.isArray() && clazz.getName().equals("[Ljava.lang.String;")) {
-                    final String[] optionsArray = options.toArray(new String[options.size()]);
+                    final String[] optionsArray = options.toArray(Strings.EMPTY_ARRAY);
                     parms[i] = optionsArray;
                 } else if (clazz.isAssignableFrom(Configuration.class)) {
                     parms[i] = config;

@@ -24,7 +24,7 @@
     </properties>
   #set($dollar = '$')
   #set($sharp = '#')
-  #set($javadocRoot = 'http://docs.oracle.com/javase/6/docs/api')
+  #set($javadocRoot = 'https://docs.oracle.com/javase/6/docs/api')
   #macro(javadoc $path $class)
       <a class="javadoc" href="${javadocRoot}/${path}/${class}.html">${class}</a>
   #end
@@ -58,7 +58,7 @@
         <subsection name="CSV Layouts">
           <p>
             This layout creates <a href="https://en.wikipedia.org/wiki/Comma-separated_values">Comma Separated Value (CSV)</a>
-            records and requires <a href="https://commons.apache.org/proper/commons-csv/">Apache Commons CSV</a> 1.4.
+            records and requires <a href="https://commons.apache.org/proper/commons-csv/">Apache Commons CSV</a>.
           </p>
           <p>
             The CSV layout can be used in two ways: First, using <code>CsvParameterLayout</code> to log event parameters
@@ -102,7 +102,7 @@ logger.info(new ObjectArrayMessage(value1, value2, value3));
                 One of the predefined formats: <code>Default</code>, <code>Excel</code>, <code>MySQL</code>,
                 <code>RFC4180</code>, <code>TDF</code>.
                 See
-                  <a href="https://commons.apache.org/proper/commons-csv/archives/1.4/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html">CSVFormat.Predefined</a>.
+                  <a href="https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html">CSVFormat.Predefined</a>.
               </td>
             </tr>
             <tr>
@@ -332,13 +332,12 @@ logger.debug("one={}, two={}, three={}", 1, 2, 3);
           <p>
               To include any custom field in the output, use following syntax:
           </p>
-              <pre class="prettyprint linenums">
-  &lt;GelfLayout includeThreadContext="true" threadContextIncludes="loginId,requestId">
+          <pre class="prettyprint linenums"><![CDATA[
+<GelfLayout includeThreadContext="true" threadContextIncludes="loginId,requestId">
     <MessagePattern>%d %5p [%t] %c{1} %X{loginId, requestId} - %m%n</MessagePattern>
-    &lt;KeyValuePair key="additionalField1" value="constant value"/&gt;
-    &lt;KeyValuePair key="additionalField2" value="${dollar}${dollar}{ctx:key}"/&gt;
-  &lt;/GelfLayout&gt;
-</pre>
+    <KeyValuePair key="additionalField1" value="constant value"/>
+    <KeyValuePair key="additionalField2" value="${dollar}${dollar}{ctx:key}"/>
+</GelfLayout>]]></pre>
           <p>
               Custom fields are included in the order they are declared. The values support <a href="lookups.html">lookups</a>.
           </p>
@@ -346,7 +345,7 @@ logger.debug("one={}, two={}, three={}", 1, 2, 3);
             See also:
           </p>
           <ul>
-            <li>The <a href="http://docs.graylog.org/en/latest/pages/gelf.html#gelf">GELF specification</a></li>
+            <li>The <a href="https://docs.graylog.org/en/latest/pages/gelf.html#gelf">GELF specification</a></li>
           </ul>
         </subsection>
         <a name="HTMLLayout"/>
@@ -855,7 +854,10 @@ WARN  [main]: Message 2</pre>
                 <p>When the precision specifier is an integer value, it reduces the size of the logger name.
                   If the number is positive, the layout prints the corresponding number of rightmost logger
                   name components. If negative, the layout removes the corresponding number of leftmost logger
-                  name components.
+                  name components. If the precision contains periods then the number before the first period
+                  identifies the length to be printed from items that precede tokens in the rest of the pattern.
+                  If the number after the first period is followed by an asterisk it indicates how many of the
+                  rightmost tokens will be printed in full. See the table below for abbreviation examples.
                 </p>
                 <p>
                    If the precision contains any non-integer characters, then the layout abbreviates the name
@@ -912,6 +914,26 @@ WARN  [main]: Message 2</pre>
                     <td>%c{.}</td>
                     <td>org.apache.${break}commons.test.${break}Foo</td>
                     <td>....Foo</td>
+                  </tr>
+                  <tr>
+                    <td>%c{1.1.1.*}</td>
+                    <td>org.apache.${break}commons.test.${break}Foo</td>
+                    <td>o.a.c.test.Foo</td>
+                  </tr>
+                  <tr>
+                    <td>%c{1.2.*}</td>
+                    <td>org.apache.${break}commons.test.${break}Foo</td>
+                    <td>o.a.c.test.Foo</td>
+                  </tr>
+                  <tr>
+                    <td>%c{1.3.*}</td>
+                    <td>org.apache.${break}commons.test.${break}Foo</td>
+                    <td>o.a.commons.test.Foo</td>
+                  </tr>
+                  <tr>
+                    <td>%c{1.8.*}</td>
+                    <td>org.apache.${break}commons.test.${break}Foo</td>
+                    <td>org.apache.commons.test.Foo</td>
                   </tr>
                 </table>
               </td>
@@ -1045,7 +1067,7 @@ WARN  [main]: Message 2</pre>
                   The UNIX time is the difference, in seconds for UNIX and in milliseconds for UNIX_MILLIS, between
                   the current time and midnight, January 1, 1970 UTC. While the time unit is milliseconds, the
                   granularity depends on the operating system
-                  (<a href="http://msdn.microsoft.com/en-us/windows/hardware/gg463266.aspx">Windows</a>).
+                  (<a href="https://msdn.microsoft.com/en-us/windows/hardware/gg463266.aspx">Windows</a>).
                   This is an efficient way to output the event time because only a conversion from long to String
                   takes place, there is no Date formatting involved.
                 </p>
@@ -1332,12 +1354,21 @@ WARN  [main]: Message 2</pre>
                 <p>You can override the default colors in the optional {style} option. For example:
  #if ($isPDF)
                  <pre>%highlight{%d [%t] %-5level: %msg%n%throwable}
-   {FATAL=white, ERROR=red, WARN=blue, INFO=black,
-    DEBUG=green, TRACE=blue}</pre>
+   {FATAL=white, ERROR=red, WARN=bright_blue, INFO=black,
+    DEBUG=bright_green, TRACE=blue}</pre>
  #else
-                 <pre>%highlight{%d [%t] %-5level: %msg%n%throwable}{FATAL=white, ERROR=red, WARN=blue, INFO=black, DEBUG=green, TRACE=blue}</pre>
+                 <pre>%highlight{%d [%t] %-5level: %msg%n%throwable}{FATAL=white, ERROR=red, WARN=bright_blue, INFO=black, DEBUG=bright_green, TRACE=blue}</pre>
  #end
                 </p>
+                <p>At the same time it is possible to use true colors (24 bit). For example:
+ #if ($isPDF)
+                 <pre>%highlight{%d [%t] %-5level: %msg%n%throwable}
+   {FATAL=white, ERROR=red, WARN=bg_#5792e6 fg_#eef26b bold, INFO=black,
+    DEBUG=#3fe0a8, TRACE=blue}</pre>
+ #else
+                 <pre>%highlight{%d [%t] %-5level: %msg%n%throwable}{FATAL=white, ERROR=red, WARN=bg_#5792e6 fg_#eef26b bold, INFO=black, DEBUG=#3fe0a8, TRACE=blue}</pre>
+ #end
+                </p>                
                 <p>You can highlight only the a portion of the log event:
                  <pre>%d [%t] %highlight{%-5level: %msg%n%throwable}</pre>
                 </p>
@@ -1733,7 +1764,7 @@ WARN  [main]: Message 2</pre>
               </td>
               <td>
                 <p>Uses ANSI escape sequences to style the result of the enclosed pattern. The style can consist of
-                  a comma separated list of style names from the following table.
+                  a whitespace separated list of style names from the following table.
                   (See Jansi <a href="#enable-jansi">configuration</a>.)
                   <table>
                     <tr>
@@ -1842,7 +1873,7 @@ WARN  [main]: Message 2</pre>
                   <pre>%style{%d{ISO8601}}{black} %style{[%t]}{blue} %style{%-5level:}{yellow} %style{%msg%n%throwable}{green}</pre>
                 </p>
 				<p>You can also combine styles:
-                  <pre>%d %highlight{%p} %style{%logger}{bright,cyan} %C{1.} %msg%n</pre>
+                  <pre>%d %highlight{%p} %style{%logger}{bright cyan} %C{1.} %msg%n</pre>
                 </p>
 				<p>You can also use <code>%</code> with a color like <code>%black</code>, <code>%blue</code>, <code>%cyan</code>, and so on. For example:
                   <pre>%black{%d{ISO8601}} %blue{[%t]} %yellow{%-5level:} %green{%msg%n%throwable}</pre>
@@ -2157,7 +2188,7 @@ WARN  [main]: Message 2</pre>
           <a name="enable-jansi"></a>
           <h4>ANSI Styling on Windows</h4>
           <p>ANSI escape sequences are supported natively on many platforms but are not by default on Windows. To
-            enable ANSI support add the <a href="http://jansi.fusesource.org/">Jansi</a> jar to your application
+            enable ANSI support add the <a href="https://jansi.fusesource.org/">Jansi</a> jar to your application
             and set property <code>log4j.skipJansi</code> to <code>false</code>.
             This allows Log4j to use Jansi to add ANSI escape codes when writing to the console.
           </p>
@@ -2232,9 +2263,9 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
 </PatternLayout>]]></pre>
           <h5>ScriptPatternSelector</h5>
           <p>
-            The ScriptPatternSelector executes a script as descibed in the <a href="../configuration.html#Scripts">Scripts</a> section of the
+            The ScriptPatternSelector executes a script as described in the <a href="../configuration.html#Scripts">Scripts</a> section of the
             Configuration chapter. The script is passed all the properties configured in the Properties section of the
-            configuration, the StrSubstitutor used by the Confguration in the "substitutor" variables, and the
+            configuration, the StrSubstitutor used by the Configuration in the "substitutor" variables, and the
             log event in the "logEvent" variable, and is expected to return the value of the PatternMatch key that
             should be used, or null if the default pattern should be used.
           </p>
@@ -2257,7 +2288,7 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
         <a name="RFC5424Layout"/>
         <subsection name="RFC5424 Layout">
           <p>As the name implies, the Rfc5424Layout formats LogEvents in accordance with
-            <a href="http://tools.ietf.org/html/rfc5424">RFC 5424</a>, the enhanced Syslog specification. Although the specification
+            <a href="https://tools.ietf.org/html/rfc5424">RFC 5424</a>, the enhanced Syslog specification. Although the specification
             is primarily directed at sending messages via Syslog, this format is quite useful for
             other purposes since items are passed in the message as self-describing key/value pairs.
           </p>
@@ -2282,7 +2313,7 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
               <td>enterpriseNumber</td>
               <td>integer</td>
               <td>The IANA enterprise number as described in
-                <a href="http://tools.ietf.org/html/rfc5424#section-7.2.2">RFC 5424</a></td>
+                <a href="https://tools.ietf.org/html/rfc5424#section-7.2.2">RFC 5424</a></td>
             </tr>
             <tr>
               <td>exceptionPattern</td>
@@ -2435,7 +2466,7 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
           <h4>Complete well-formed XML vs. fragment XML</h4>
           <p>
           If you configure <code>complete="true"</code>, the appender outputs a well-formed XML document where the
-          default namespace is the Log4j namespace <code>"http://logging.apache.org/log4j/2.0/events"</code>.  By default,
+          default namespace is the Log4j namespace <code>"https://logging.apache.org/log4j/2.0/events"</code>.  By default,
           with <code>complete="false"</code>, you should include the output as an <em>external entity</em> in a
           separate file to form a well-formed XML document, in which case the appender uses
           <code>namespacePrefix</code> with a default of <code>"log4j"</code>.
@@ -2443,52 +2474,52 @@ at org.apache.logging.log4j.core.pattern.ExtendedThrowableTest.testException(Ext
           <p>
           A well-formed XML document follows this pattern:
           </p>
-          <pre class="prettyprint linenums">&lt;Event xmlns="http://logging.apache.org/log4j/2.0/events"
+          <pre class="prettyprint linenums"><![CDATA[<Event xmlns="htthttps://ging.apache.org/log4j/2.0/events"
        level="INFO"
        loggerName="HelloWorld"
        endOfBatch="false"
        thread="main"
        loggerFqcn="org.apache.logging.log4j.spi.AbstractLogger"
        threadId="1"
-       threadPriority="5"&gt;
-  &lt;Instant epochSecond="1493121664" nanoOfSecond="118000000"/>
-  &lt;Marker name="child"&gt;
-    &lt;Parents&gt;
-      &lt;Marker name="parent"&gt;
-        &lt;Parents&gt;
-          &lt;Marker name="grandparent"/&gt;
-        &lt;/Parents&gt;
-      &lt;/Marker&gt;
-    &lt;/Parents&gt;
-  &lt;/Marker&gt;
-  &lt;Message&gt;Hello, world!&lt;/Message&gt;
-  &lt;ContextMap&gt;
-    &lt;item key="bar" value="BAR"/&gt;
-    &lt;item key="foo" value="FOO"/&gt;
-  &lt;/ContextMap&gt;
-  &lt;ContextStack&gt;
-    &lt;ContextStackItem&gt;one&lt;/ContextStackItem&gt;
-    &lt;ContextStackItem&gt;two&lt;/ContextStackItem&gt;
-  &lt;/ContextStack&gt;
-  &lt;Source
+       threadPriority="5">
+  <Instant epochSecond="1493121664" nanoOfSecond="118000000"/>
+  <Marker name="child">
+    <Parents>
+      <Marker name="parent">
+        <Parents>
+          <Marker name="grandparent"/>
+        </Parents>
+      </Marker>
+    </Parents>
+  </Marker>
+  <Message>Hello, world!</Message>
+  <ContextMap>
+    <item key="bar" value="BAR"/>
+    <item key="foo" value="FOO"/>
+  </ContextMap>
+  <ContextStack>
+    <ContextStackItem>one</ContextStackItem>
+    <ContextStackItem>two</ContextStackItem>
+  </ContextStack>
+  <Source
       class="logtest.Main"
       method="main"
       file="Main.java"
-      line="29"/&gt;
-  &lt;Thrown commonElementCount="0" message="error message" name="java.lang.RuntimeException"&gt;
-    &lt;ExtendedStackTrace&gt;
-      &lt;ExtendedStackTraceItem
+      line="29"/>
+  <Thrown commonElementCount="0" message="error message" name="java.lang.RuntimeException">
+    <ExtendedStackTrace>
+      <ExtendedStackTraceItem
           class="logtest.Main"
           method="main"
           file="Main.java"
           line="29"
           exact="true"
           location="classes/"
-          version="?"/&gt;
-    &lt;/ExtendedStackTrace&gt;
-  &lt;/Thrown&gt;
-&lt;/Event&gt;
-</pre>
+          version="?"/>
+    </ExtendedStackTrace>
+  </Thrown>
+</Event>
+]]></pre>
           <p>
           If <code>complete="false"</code>, the appender does not write the XML processing instruction and the root
           element.

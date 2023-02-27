@@ -39,13 +39,12 @@ import org.apache.logging.log4j.simple.SimpleLoggerContext;
 import org.apache.logging.log4j.spi.AbstractLogger;
 import org.apache.logging.log4j.util.Constants;
 import org.apache.logging.log4j.util.PropertiesUtil;
-import org.apache.logging.log4j.util.Strings;
 
 /**
  * Records events that occur in the logging system. By default, only error messages are logged to {@link System#err}.
  * Normally, the Log4j StatusLogger is configured via the root {@code <Configuration status="LEVEL"/>} node in a Log4j
  * configuration file. However, this can be overridden via a system property named
- * "{@value SimpleLoggerContext#SYSTEM_PREFIX}StatusLogger.level" and will work with any Log4j provider.
+ * {@value #DEFAULT_STATUS_LISTENER_LEVEL} and will work with any Log4j provider.
  *
  * @see SimpleLogger
  * @see SimpleLoggerContext
@@ -75,15 +74,21 @@ public final class StatusLogger extends AbstractLogger {
 
     private static final String NOT_AVAIL = "?";
 
-    private static final PropertiesUtil PROPS = new PropertiesUtil("log4j2.StatusLogger.properties");
+    static final PropertiesUtil PROPS = new PropertiesUtil("log4j2.StatusLogger.properties");
 
     private static final int MAX_ENTRIES = PROPS.getIntegerProperty(MAX_STATUS_ENTRIES, 200);
 
     private static final String DEFAULT_STATUS_LEVEL = PROPS.getStringProperty(DEFAULT_STATUS_LISTENER_LEVEL);
 
+    static final boolean DEBUG_ENABLED = PropertiesUtil
+            .getProperties()
+            .getBooleanProperty(Constants.LOG4J2_DEBUG, false, true);
+
     // LOG4J2-1176: normal parameterized message remembers param object, causing memory leaks.
-    private static final StatusLogger STATUS_LOGGER = new StatusLogger(StatusLogger.class.getName(),
-            ParameterizedNoReferenceMessageFactory.INSTANCE);
+    private static final StatusLogger STATUS_LOGGER = new StatusLogger(
+            StatusLogger.class.getName(),
+            ParameterizedNoReferenceMessageFactory.INSTANCE,
+            SimpleLoggerFactory.getInstance());
 
     private final SimpleLogger logger;
 
@@ -101,23 +106,42 @@ public final class StatusLogger extends AbstractLogger {
 
     private int listenersLevel;
 
-    private StatusLogger(final String name, final MessageFactory messageFactory) {
+    /**
+     * Constructs the singleton instance for the STATUS_LOGGER constant.
+     * <p>
+     * This is now the logger level is set:
+     * </p>
+     * <ol>
+     * <li>If the property {@value Constants#LOG4J2_DEBUG} is {@code "true"}, then use {@link Level#TRACE}, otherwise,</li>
+     * <li>Use {@link Level#ERROR}</li>
+     * </ol>
+     * <p>
+     * This is now the listener level is set:
+     * </p>
+     * <ol>
+     * <li>If the property {@value #DEFAULT_STATUS_LISTENER_LEVEL} is set, then use <em>it</em>, otherwise,</li>
+     * <li>Use {@link Level#WARN}</li>
+     * </ol>
+     * <p>
+     * See:
+     * <ol>
+     * <li>LOG4J2-1813 Provide shorter and more intuitive way to switch on Log4j internal debug logging. If system property
+     * "log4j2.debug" is defined, print all status logging.</li>
+     * <li>LOG4J2-3340 StatusLogger's log Level cannot be changed as advertised.</li>
+     * </ol>
+     * </p>
+     *
+     * @param name The logger name.
+     * @param messageFactory The message factory.
+     */
+    private StatusLogger(
+            final String name,
+            final MessageFactory messageFactory,
+            final SimpleLoggerFactory loggerFactory) {
         super(name, messageFactory);
-        final String dateFormat = PROPS.getStringProperty(STATUS_DATE_FORMAT, Strings.EMPTY);
-        final boolean showDateTime = !Strings.isEmpty(dateFormat);
-        this.logger = new SimpleLogger("StatusLogger", Level.ERROR, false, true, showDateTime, false,
-                dateFormat, messageFactory, PROPS, System.err);
+        final Level loggerLevel = DEBUG_ENABLED ? Level.TRACE : Level.ERROR;
+        this.logger = loggerFactory.createSimpleLogger("StatusLogger", loggerLevel, messageFactory, System.err);
         this.listenersLevel = Level.toLevel(DEFAULT_STATUS_LEVEL, Level.WARN).intLevel();
-
-        // LOG4J2-1813 if system property "log4j2.debug" is defined, print all status logging
-        if (isDebugPropertyEnabled()) {
-            logger.setLevel(Level.TRACE);
-        }
-    }
-
-    // LOG4J2-1813 if system property "log4j2.debug" is defined, print all status logging
-    private boolean isDebugPropertyEnabled() {
-        return PropertiesUtil.getProperties().getBooleanProperty(Constants.LOG4J2_DEBUG, false, true);
     }
 
     /**
@@ -269,7 +293,7 @@ public final class StatusLogger extends AbstractLogger {
             msgLock.unlock();
         }
         // LOG4J2-1813 if system property "log4j2.debug" is defined, all status logging is enabled
-        if (isDebugPropertyEnabled() || (listeners.size() <= 0)) {
+        if (DEBUG_ENABLED || (listeners.size() <= 0)) {
             logger.logMessage(fqcn, level, marker, msg, t);
         } else {
             for (final StatusListener listener : listeners) {
@@ -399,8 +423,7 @@ public final class StatusLogger extends AbstractLogger {
 
     @Override
     public boolean isEnabled(final Level level, final Marker marker) {
-        // LOG4J2-1813 if system property "log4j2.debug" is defined, all status logging is enabled
-        if (isDebugPropertyEnabled()) {
+        if (DEBUG_ENABLED) {
             return true;
         }
         if (listeners.size() > 0) {

@@ -34,9 +34,8 @@ import java.util.zip.GZIPInputStream;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.apache.avro.AvroRemoteException;
-import org.apache.avro.ipc.NettyServer;
-import org.apache.avro.ipc.Responder;
+import org.apache.avro.ipc.Server;
+import org.apache.avro.ipc.netty.NettyServer;
 import org.apache.avro.ipc.specific.SpecificResponder;
 import org.apache.flume.Event;
 import org.apache.flume.event.EventBuilder;
@@ -48,9 +47,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
+import org.apache.logging.log4j.core.test.AvailablePortFinder;
 import org.apache.logging.log4j.message.StructuredDataMessage;
 import org.apache.logging.log4j.status.StatusLogger;
-import org.apache.logging.log4j.test.AvailablePortFinder;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -59,6 +58,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.google.common.base.Preconditions;
+
+import static org.junit.Assert.fail;
 
 /**
  *
@@ -253,18 +254,27 @@ public class FlumeEmbeddedAppenderTest {
     private static class EventCollector implements AvroSourceProtocol {
         private final LinkedBlockingQueue<AvroFlumeEvent> eventQueue = new LinkedBlockingQueue<>();
 
-        private final NettyServer nettyServer;
-
+        private Server server;
 
         public EventCollector(final int port) {
-            final Responder responder = new SpecificResponder(AvroSourceProtocol.class, this);
-            System.out.println("Collector listening on port " + port);
-            nettyServer = new NettyServer(responder, new InetSocketAddress(HOSTNAME, port));
-            nettyServer.start();
+            try {
+                server = createServer(this, port);
+            } catch (InterruptedException ex) {
+                fail("Server creation was interrrupted");
+            }
+            server.start();
+        }
+
+        private Server createServer(AvroSourceProtocol protocol, final int port) throws InterruptedException {
+
+            server = new NettyServer(new SpecificResponder(AvroSourceProtocol.class, protocol),
+                    new InetSocketAddress(HOSTNAME, port));
+
+            return server;
         }
 
         public void stop() {
-            nettyServer.close();
+            server.close();
         }
 
         public Event poll() {
@@ -283,14 +293,13 @@ public class FlumeEmbeddedAppenderTest {
         }
 
         @Override
-        public Status append(final AvroFlumeEvent event) throws AvroRemoteException {
+        public Status append(final AvroFlumeEvent event) {
             eventQueue.add(event);
             return Status.OK;
         }
 
         @Override
-        public Status appendBatch(final List<AvroFlumeEvent> events)
-            throws AvroRemoteException {
+        public Status appendBatch(final List<AvroFlumeEvent> events) {
             Preconditions.checkState(eventQueue.addAll(events));
             return Status.OK;
         }

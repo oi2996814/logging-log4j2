@@ -15,12 +15,11 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>org.apache.logging.log4j</groupId>
     <artifactId>log4j</artifactId>
-    <version>2.17.2-SNAPSHOT</version>
+    <version>2.20.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -34,8 +33,10 @@
     <docLabel>Cassandra Documentation</docLabel>
     <projectDir>/log4j-cassandra</projectDir>
     <module.name>org.apache.logging.log4j.cassandra</module.name>
-    <maven.doap.skip>true</maven.doap.skip>
-    <cassandra-all.version>2.2.8</cassandra-all.version>
+
+    <!-- cassandra-all breaks with a newer version -->
+    <!-- at least this version has one CVE less than the one suggested by Cassandra -->
+    <guava.version>25.1-jre</guava.version>
   </properties>
 
   <dependencies>
@@ -47,35 +48,25 @@
       <groupId>com.datastax.cassandra</groupId>
       <artifactId>cassandra-driver-core</artifactId>
     </dependency>
-    <!-- Test Dependencies -->
     <dependency>
-      <groupId>org.junit.vintage</groupId>
-      <artifactId>junit-vintage-engine</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-api</artifactId>
-      <type>test-jar</type>
+      <artifactId>log4j-core-test</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <type>test-jar</type>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <scope>test</scope>
     </dependency>
     <!-- Cassandra appender integration testing -->
     <dependency>
       <groupId>org.apache.cassandra</groupId>
       <artifactId>cassandra-all</artifactId>
-      <version>${cassandra-all.version}</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
@@ -89,8 +80,24 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j-impl</artifactId>
+      <groupId>org.apache.cassandra</groupId>
+      <artifactId>cassandra-thrift</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Test Dependencies -->
+    <dependency>
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -109,90 +116,4 @@
       </plugin>
     </plugins>
   </build>
-  <reporting>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-changes-plugin</artifactId>
-        <version>${changes.plugin.version}</version>
-        <reportSets>
-          <reportSet>
-            <reports>
-              <report>changes-report</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-        <configuration>
-          <issueLinkTemplate>%URL%/show_bug.cgi?id=%ISSUE%</issueLinkTemplate>
-          <useJql>true</useJql>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>${checkstyle.plugin.version}</version>
-        <configuration>
-          <!--<propertiesLocation>${vfs.parent.dir}/checkstyle.properties</propertiesLocation> -->
-          <configLocation>${log4jParentDir}/checkstyle.xml</configLocation>
-          <suppressionsLocation>${log4jParentDir}/checkstyle-suppressions.xml</suppressionsLocation>
-          <enableRulesSummary>false</enableRulesSummary>
-          <propertyExpansion>basedir=${basedir}</propertyExpansion>
-          <propertyExpansion>licensedir=${log4jParentDir}/checkstyle-header.txt</propertyExpansion>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>${javadoc.plugin.version}</version>
-        <configuration>
-          <bottom><![CDATA[<p align="center">Copyright &#169; {inceptionYear}-{currentYear} {organizationName}. All Rights Reserved.<br />
-            Apache Logging, Apache Log4j, Log4j, Apache, the Apache feather logo, the Apache Logging project logo,
-            and the Apache Log4j logo are trademarks of The Apache Software Foundation.</p>]]></bottom>
-          <!-- module link generation is completely broken in the javadoc plugin for a multi-module non-aggregating
-               project -->
-          <detectOfflineLinks>false</detectOfflineLinks>
-          <linksource>true</linksource>
-        </configuration>
-        <reportSets>
-          <reportSet>
-            <id>non-aggregate</id>
-            <reports>
-              <report>javadoc</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-      </plugin>
-      <plugin>
-        <groupId>com.github.spotbugs</groupId>
-        <artifactId>spotbugs-maven-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jxr-plugin</artifactId>
-        <version>${jxr.plugin.version}</version>
-        <reportSets>
-          <reportSet>
-            <id>non-aggregate</id>
-            <reports>
-              <report>jxr</report>
-            </reports>
-          </reportSet>
-          <reportSet>
-            <id>aggregate</id>
-            <reports>
-              <report>aggregate</report>
-            </reports>
-          </reportSet>
-        </reportSets>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-pmd-plugin</artifactId>
-        <version>${pmd.plugin.version}</version>
-        <configuration>
-          <targetJdk>${maven.compiler.target}</targetJdk>
-        </configuration>
-      </plugin>
-    </plugins>
-  </reporting>
 </project>

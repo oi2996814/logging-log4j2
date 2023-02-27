@@ -22,7 +22,15 @@ import org.springframework.core.env.Environment;
 /**
  * Returns properties from Spring.
  */
-public class SpringPropertySource extends SpringEnvironmentHolder implements PropertySource {
+public class SpringPropertySource implements PropertySource {
+
+    private static final int DEFAULT_PRIORITY = -100;
+
+    private final Environment environment;
+
+    public SpringPropertySource(Environment environment) {
+        this.environment = environment;
+    }
 
     /**
      * System properties take precendence followed by properties in Log4j properties files. Spring properties
@@ -31,12 +39,11 @@ public class SpringPropertySource extends SpringEnvironmentHolder implements Pro
      */
     @Override
     public int getPriority() {
-        return -50;
+        return DEFAULT_PRIORITY ;
     }
 
     @Override
     public String getProperty(String key) {
-        Environment environment = getEnvironment();
         if (environment != null) {
             return environment.getProperty(key);
         }
@@ -45,7 +52,6 @@ public class SpringPropertySource extends SpringEnvironmentHolder implements Pro
 
     @Override
     public boolean containsProperty(String key) {
-        Environment environment = getEnvironment();
         if (environment != null) {
             return environment.containsProperty(key);
         }

@@ -87,7 +87,7 @@ public class DirectWriteRolloverStrategy extends AbstractRolloverStrategy implem
         public DirectWriteRolloverStrategy build() {
             int maxIndex = Integer.MAX_VALUE;
             if (maxFiles != null) {
-                maxIndex = Integer.parseInt(maxFiles);
+                maxIndex = Integers.parseInt(maxFiles);
                 if (maxIndex < 0) {
                     maxIndex = Integer.MAX_VALUE;
                 } else if (maxIndex < 2) {
@@ -314,8 +314,11 @@ public class DirectWriteRolloverStrategy extends AbstractRolloverStrategy implem
     public String getCurrentFileName(final RollingFileManager manager) {
         if (currentFileName == null) {
             final SortedMap<Integer, Path> eligibleFiles = getEligibleFiles(manager);
-            final int fileIndex = eligibleFiles.size() > 0 ? (nextIndex > 0 ? nextIndex : eligibleFiles.size()) : 1;
+            final int fileIndex = eligibleFiles.size() > 0 ? (nextIndex > 0 ? nextIndex :
+                    eligibleFiles.lastKey()) : 1;
             final StringBuilder buf = new StringBuilder(255);
+            // LOG4J2-3339 - Always use the current time for new direct write files.
+            manager.getPatternProcessor().setCurrentFileTime(System.currentTimeMillis());
             manager.getPatternProcessor().formatFileName(strSubstitutor, buf, true, fileIndex);
             final int suffixLength = suffixLength(buf.toString());
             final String name = suffixLength > 0 ? buf.substring(0, buf.length() - suffixLength) : buf.toString();
@@ -378,7 +381,7 @@ public class DirectWriteRolloverStrategy extends AbstractRolloverStrategy implem
         }
 
         if (compressAction != null && manager.isAttributeViewEnabled()) {
-            // Propagate posix attribute view to compressed file
+            // Propagate POSIX attribute view to compressed file
             // @formatter:off
             final Action posixAttributeViewAction = PosixViewAttributeAction.newBuilder()
                                                     .withBasePath(compressedName)

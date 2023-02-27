@@ -57,7 +57,7 @@ public class SyslogAppender extends SocketAppender {
         private String id;
 
         @PluginBuilderAttribute(value = "enterpriseNumber")
-        private int enterpriseNumber = Rfc5424Layout.DEFAULT_ENTERPRISE_NUMBER;
+        private String enterpriseNumber = String.valueOf(Rfc5424Layout.DEFAULT_ENTERPRISE_NUMBER);
 
         @PluginBuilderAttribute(value = "includeMdc")
         private boolean includeMdc = true;
@@ -104,7 +104,7 @@ public class SyslogAppender extends SocketAppender {
         @PluginElement("LoggerFields")
         private LoggerFields[] loggerFields;
 
-        @SuppressWarnings({"resource", "unchecked"})
+        @SuppressWarnings({"resource"})
         @Override
         public SyslogAppender build() {
             final Protocol protocol = getProtocol();
@@ -114,10 +114,26 @@ public class SyslogAppender extends SocketAppender {
             Layout<? extends Serializable> layout = getLayout();
             if (layout == null) {
                 layout = RFC5424.equalsIgnoreCase(format)
-                        ? Rfc5424Layout.createLayout(facility, id, enterpriseNumber, includeMdc, mdcId, mdcPrefix,
-                                eventPrefix, newLine, escapeNL, appName, msgId, excludes, includes, required,
-                                exceptionPattern, useTlsMessageFormat, loggerFields, configuration)
-                        :
+                        ? new Rfc5424Layout.Rfc5424LayoutBuilder()
+                        .setFacility(facility)
+                        .setId(id)
+                        .setEin(enterpriseNumber)
+                        .setIncludeMDC(includeMdc)
+                        .setMdcId(mdcId)
+                        .setMdcPrefix(mdcPrefix)
+                        .setEventPrefix(eventPrefix)
+                        .setIncludeNL(newLine)
+                        .setEscapeNL(escapeNL)
+                        .setAppName(appName)
+                        .setMessageId(msgId)
+                        .setExcludes(excludes)
+                        .setIncludes(includes)
+                        .setRequired(required)
+                        .setExceptionPattern(exceptionPattern)
+                        .setUseTLSMessageFormat(useTlsMessageFormat)
+                        .setLoggerFields(loggerFields)
+                        .setConfig(configuration)
+                        .build() :
                         // @formatter:off
                         SyslogLayout.newBuilder()
                             .setFacility(facility)
@@ -133,7 +149,7 @@ public class SyslogAppender extends SocketAppender {
                 return null;
             }
             final AbstractSocketManager manager = createSocketManager(name, protocol, getHost(), getPort(), getConnectTimeoutMillis(),
-                    sslConfiguration, getReconnectDelayMillis(), getImmediateFail(), layout, Constants.ENCODER_BYTE_BUFFER_SIZE, null);
+                    sslConfiguration, getReconnectDelayMillis(), getImmediateFail(), layout, Constants.ENCODER_BYTE_BUFFER_SIZE, getSocketOptions());
 
             return new SyslogAppender(name, layout, getFilter(), isIgnoreExceptions(), isImmediateFlush(), manager,
                     getAdvertise() ? configuration.getAdvertiser() : null, null);
@@ -147,7 +163,7 @@ public class SyslogAppender extends SocketAppender {
             return id;
         }
 
-        public int getEnterpriseNumber() {
+        public String getEnterpriseNumber() {
             return enterpriseNumber;
         }
 
@@ -221,8 +237,16 @@ public class SyslogAppender extends SocketAppender {
             return asBuilder();
         }
 
-        public B setEnterpriseNumber(final int enterpriseNumber) {
+        public B setEnterpriseNumber(final String enterpriseNumber) {
             this.enterpriseNumber = enterpriseNumber;
+            return asBuilder();
+        }
+
+        /**
+         * @deprecated Use {@link #setEnterpriseNumber(String)} instead
+         */
+        public B setEnterpriseNumber(final int enterpriseNumber) {
+            this.enterpriseNumber = String.valueOf(enterpriseNumber);
             return asBuilder();
         }
 
@@ -398,16 +422,16 @@ public class SyslogAppender extends SocketAppender {
 
         // @formatter:off
         return SyslogAppender.<B>newSyslogAppenderBuilder()
-        .withHost(host)
-        .withPort(port)
-        .withProtocol(EnglishEnums.valueOf(Protocol.class, protocolStr))
-        .withSslConfiguration(sslConfiguration)
-        .withConnectTimeoutMillis(connectTimeoutMillis)
-        .withReconnectDelayMillis(reconnectDelayMillis)
-        .withImmediateFail(immediateFail).setName(appName)
-        .withImmediateFlush(immediateFlush).setIgnoreExceptions(ignoreExceptions).setFilter(filter)
+        .setHost(host)
+        .setPort(port)
+        .setProtocol(EnglishEnums.valueOf(Protocol.class, protocolStr))
+        .setSslConfiguration(sslConfiguration)
+        .setConnectTimeoutMillis(connectTimeoutMillis)
+        .setReconnectDelayMillis(reconnectDelayMillis)
+        .setImmediateFail(immediateFail).setName(appName)
+        .setImmediateFlush(immediateFlush).setIgnoreExceptions(ignoreExceptions).setFilter(filter)
                 .setConfiguration(configuration)
-                .withAdvertise(advertise)
+                .setAdvertise(advertise)
                 .setFacility(facility)
                 .setId(id)
                 .setEnterpriseNumber(enterpriseNumber)

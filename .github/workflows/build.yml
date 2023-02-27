@@ -15,13 +15,22 @@
 
 name: build
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches:
+      - 2.x
+  pull_request:
+
+permissions: read-all
 
 jobs:
+
   build:
 
     runs-on: ${{ matrix.os }}
-
+    # Based on: https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
+    env:
+      MAVEN_OPTS: -Xms3072m -Xmx3072m
     strategy:
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
@@ -29,12 +38,14 @@ jobs:
     steps:
 
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b   # 3.2.0
+        with:
+          fetch-depth: 32
 
       # JDK 11 is needed for the build.
       # Search `maven-toolchains-plugin` usages for details.
       - name: Setup JDK 11
-        uses: actions/setup-java@v2.4.0
+        uses: actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b   # 3.9.0
         with:
           distribution: temurin
           java-version: 11
@@ -45,7 +56,7 @@ jobs:
       # JDK 8 is needed for the build, and it is the primary bytecode target.
       # Hence, JDK 8 is set up after 11, so that JAVA_HOME used by Maven during build will point to 8.
       - name: Setup JDK 8
-        uses: actions/setup-java@v2.3.0
+        uses: actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b   # 3.9.0
         with:
           distribution: temurin
           java-version: 8
@@ -53,26 +64,128 @@ jobs:
           architecture: x64
           cache: maven
 
-      - name: Inspect environment (Linux)
-        if: runner.os == 'Linux'
-        run: env | grep '^JAVA'
+      # We could have used `verify`, but `clean install` is required for the following:
+      # 1. The build reproducibility report
+      #    For details, see: https://maven.apache.org/guides/mini/guide-reproducible-builds.html#how-to-test-my-maven-build-reproducibility
+      # 2. `javadoc:javadoc-no-fork`, which is attached to the `site` goal
+      - name: Build
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          ./mvnw \
+            --show-version --batch-mode --errors --no-transfer-progress \
+            --global-toolchains ".github/workflows/maven-toolchains.xml" \
+            -DskipTests=true \
+            clean install
 
-      - name: Inspect environment (Windows)
-        if: runner.os == 'Windows'
-        run: set java
+      # `clean verify artifact:compare` is required to generate the build reproducibility report.
+      # For details, see: https://maven.apache.org/guides/mini/guide-reproducible-builds.html#how-to-test-my-maven-build-reproducibility
+      - name: Report build reproducibility
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          ./mvnw \
+            --show-version --batch-mode --errors --no-transfer-progress \
+            --global-toolchains ".github/workflows/maven-toolchains.xml" \
+            -DskipTests=true \
+            clean verify artifact:compare
 
-      - name: Inspect environment (MacOS)
-        if: runner.os == 'macOS'
-        run: env | grep '^JAVA'
+      # `artifact:compare` doesn't fail the build in case of a reproducibility problem.
+      # Below we manually check reproducibility build reports and fail the build, if necessary.
+      - name: Verify build reproducibility
+        shell: bash
+        run: |
+          for report_file in target/*.buildcompare **/target/*.buildcompare; do
+            if ! grep -q "^ko=0$" "$report_file"; then
+              echo "Spotted build reproducibility failure in \`$report_file\`:"
+              cat "$report_file"
+              exit 1
+            fi
+          done
 
-      - name: Build with Maven
+      - name: Maven "verify"
         timeout-minutes: 60
         shell: bash
         run: |
           ./mvnw \
-          --show-version --batch-mode --errors --no-transfer-progress \
-          -DtrimStackTrace=false \
-          -Dsurefire.rerunFailingTestsCount=2 \
-          -Dlog4j2.junit.fileCleanerSleepPeriodMillis=1000 \
-          --global-toolchains ".github/workflows/maven-toolchains.xml" \
-          verify
+            --show-version --batch-mode --errors --no-transfer-progress \
+            --global-toolchains ".github/workflows/maven-toolchains.xml" \
+            -DtrimStackTrace=false \
+            -Dsurefire.rerunFailingTestsCount=2 \
+            -Dlog4j2.junit.fileCleanerSleepPeriodMillis=1000 \
+            verify
+
+      - name: Maven "site"
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          ./mvnw \
+            --show-version --batch-mode --errors --no-transfer-progress \
+            --global-toolchains ".github/workflows/maven-toolchains.xml" \
+            site
+
+  deploy:
+
+    runs-on: ubuntu-latest
+    env:
+      MAVEN_OPTS: -Xms3072m -Xmx3072m
+    needs: build
+    if: github.repository == 'apache/logging-log4j2' && github.ref == 'refs/heads/2.x'
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b   # 3.2.0
+        with:
+          fetch-depth: 32
+
+      # JDK 11 is needed for the build.
+      # Search `maven-toolchains-plugin` usages for details.
+      - name: Setup JDK 11
+        uses: actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b   # 3.9.0
+        with:
+          distribution: temurin
+          java-version: 11
+          java-package: jdk
+          architecture: x64
+          cache: maven
+
+      # JDK 8 is needed for the build, and it is the primary bytecode target.
+      # Hence, JDK 8 is set up after 11, so that JAVA_HOME used by Maven during build will point to 8.
+      - name: Setup JDK 8
+        uses: actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b   # 3.9.0
+        with:
+          distribution: temurin
+          java-version: 8
+          java-package: jdk
+          architecture: x64
+          cache: maven
+
+      - name: Inspect environment
+        run: env | grep '^JAVA'
+
+      - name: Inspect project version
+        run: |
+          echo ::set-output name=version::$(./mvnw \
+            -q -Dexec.executable=echo \
+            -Dexec.args='${project.version}' --non-recursive exec:exec)
+        id: get_version
+
+      - name: Deploy artifacts
+        # Do not deploy release versions
+        if: ${{ endsWith(steps.get_version.outputs.version, '-SNAPSHOT') }}
+        timeout-minutes: 15
+        shell: bash
+        # `package install:install deploy:deploy` goal is needed to deploy without configuring the plugin in the POM.
+        # For details, see: https://maven.apache.org/plugins/maven-gpg-plugin/examples/deploy-signed-artifacts.html
+        run: |
+          ./mvnw \
+            --show-version --batch-mode --errors --no-transfer-progress \
+            --global-toolchains ".github/workflows/maven-toolchains.xml" \
+            --settings .github/workflows/maven-settings.xml \
+            -Dgpg.skip=true \
+            -DskipTests=true \
+            package install:install deploy:deploy
+        env:
+          NEXUS_USER: ${{ secrets.NEXUS_USER }}
+          NEXUS_PW: ${{ secrets.NEXUS_PW }}

@@ -16,6 +16,11 @@
 .project
 .idea
 **/*.iml
+/.metadata/
+/.mvn/wrapper/maven-wrapper.jar
+.project
+.settings
+.surefire-*
 **/target
 target/
 .settings
@@ -24,8 +29,8 @@ target/
 .cache-tests
 .toDelete
 .factorypath
+.surefire-*
 velocity.log
 felix-cache/
-bin/
 /.metadata/
 .DS_Store

@@ -20,8 +20,7 @@
   <parent>
     <groupId>org.apache.logging.log4j</groupId>
     <artifactId>log4j</artifactId>
-    <version>2.17.2-SNAPSHOT</version>
-    <relativePath>../</relativePath>
+    <version>2.20.1-SNAPSHOT</version>
   </parent>
   <artifactId>log4j-core-java9</artifactId>
   <packaging>pom</packaging>
@@ -31,17 +30,13 @@
     <log4jParentDir>${basedir}/..</log4jParentDir>
     <docLabel>Log4j Implementation Documentation</docLabel>
     <projectDir>/core</projectDir>
+    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
   <dependencies>
     <!-- Naturally, all implementations require the log4j-api JAR -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
@@ -51,24 +46,51 @@
   </dependencies>
   <build>
     <plugins>
+      <!-- There are no test for now.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-toolchains-plugin</artifactId>
-        <version>3.0.0</version>
+        <artifactId>maven-surefire-plugin</artifactId>
         <executions>
           <execution>
+            <id>test</id>
+            <phase>test</phase>
             <goals>
-              <goal>toolchain</goal>
+              <goal>test</goal>
             </goals>
           </execution>
         </executions>
         <configuration>
-          <toolchains>
-            <jdk>
-              <version>[9, )</version>
-            </jdk>
-          </toolchains>
+          <systemPropertyVariables>
+            <java.awt.headless>true</java.awt.headless>
+          </systemPropertyVariables>
+          <includes>
+            <include>**/Test*.java</include>
+            <include>**/*Test.java</include>
+          </includes>
+          <excludes>
+            <exclude>**/*FuncTest.java</exclude>
+          </excludes>
         </configuration>
+      </plugin>
+      -->
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>zip</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <finalName>log4j-core-java9-${project.version}</finalName>
+              <appendAssemblyId>false</appendAssemblyId>
+              <descriptors>
+                <descriptor>src/assembly/java9.xml</descriptor>
+              </descriptors>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -92,68 +114,22 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <!-- Do not upgrade until https://issues.apache.org/jira/browse/SUREFIRE-720 is fixed -->
-        <version>2.13</version>
+        <artifactId>maven-toolchains-plugin</artifactId>
         <executions>
           <execution>
-            <id>test</id>
-            <phase>test</phase>
             <goals>
-              <goal>test</goal>
+              <goal>toolchain</goal>
             </goals>
           </execution>
         </executions>
         <configuration>
-          <systemPropertyVariables>
-            <java.awt.headless>true</java.awt.headless>
-          </systemPropertyVariables>
-          <includes>
-            <include>**/Test*.java</include>
-            <include>**/*Test.java</include>
-          </includes>
-          <excludes>
-            <exclude>**/*FuncTest.java</exclude>
-          </excludes>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>zip</id>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-            <configuration>
-              <finalName>log4j-core-java9-${project.version}</finalName>
-              <appendAssemblyId>false</appendAssemblyId>
-              <descriptors>
-                <descriptor>src/assembly/java9.xml</descriptor>
-              </descriptors>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-deploy-plugin</artifactId>
-        <version>${deploy.plugin.version}</version>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-site-plugin</artifactId>
-        <version>${site.plugin.version}</version>
-        <configuration>
-          <skip>true</skip>
-          <skipDeploy>true</skipDeploy>
+          <toolchains>
+            <jdk>
+              <version>[9, )</version>
+            </jdk>
+          </toolchains>
         </configuration>
       </plugin>
     </plugins>
   </build>
 </project>
-

@@ -21,23 +21,19 @@
 This page lists all the security vulnerabilities fixed in released versions of Apache Log4j 2.
 Each vulnerability is given a [security impact rating](#Security_Impact_Levels)
 by the [Apache Logging security team](mailto:security@logging.apache.org).
-please note that this rating may vary from platform to platform. We also list the versions
+Note that this rating may vary from platform to platform. We also list the versions
 of Apache Log4j the flaw is known to affect, and where a flaw has not been verified list
 the version with a question mark.
 
-Note: Vulnerabilities that are not Log4j vulnerabilities but have either been incorrectly
-reported against Log4j or where Log4j provides a workaround are listed at the end of this page.
-
-Please note that [Log4j 1.x](http://logging.apache.org/log4j/1.2/) has 
+[Log4j 1.x](http://logging.apache.org/log4j/1.2/) has 
 [reached End of Life](https://blogs.apache.org/foundation/entry/apache_logging_services_project_announces)
 in 2015 and is no longer supported.
 Vulnerabilities reported after August 2015 against Log4j 1.x were not checked and will not be fixed.
 Users should [upgrade to Log4j 2](manual/migration.html) to obtain security fixes.
 
-Please note that binary patches are never provided. If you need to apply a source code patch,
+Binary patches are never provided. If you need to apply a source code patch,
 use the building instructions for the Apache Log4j version that you are using.
-For Log4j 2 this is BUILDING.md.
-This file can be found in the root subdirectory of a source distributive.
+For Log4j 2 these can be found in `BUILDING.md` located in the root subdirectory of the source distribution.
 
 If you need help on building or configuring Log4j or other help on following the instructions
 to mitigate the known vulnerabilities listed here, please
@@ -46,7 +42,9 @@ Log4j [Users mailing list](mail-lists.html).
 
 If you have encountered an unlisted security vulnerability or other unexpected behaviour
 that has security impact, or if the descriptions here are incomplete, please report them
-privately to the [Log4j Security Team](mailto:security@logging.apache.org). Thank you.
+privately to [the Log4j Security Team](mailto:security@logging.apache.org).
+Note that reports assuming attacker's access to the Log4j configuration will not qualify as a vulnerability.
+Thank you for your understanding and help!
 
 <a name="CVE-2021-44832"/><a name="cve-2021-44832"/>
 ## <a name="log4j-2.17.1"/> Fixed in Log4j 2.17.1 (Java 8), 2.12.4 (Java 7) and 2.3.2 (Java 6)
@@ -58,7 +56,7 @@ Apache Log4j2 vulnerable to RCE via JDBC Appender when attacker controls configu
 | ---------------   | -------- |
 | Severity          | Moderate |
 | Base CVSS Score   | 6.6 (AV:N/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H) |
-| Versions Affected | All versions from 2.0-alpha7 to 2.17.0, excluding 2.3.2 and 2.12.4 |
+| Versions Affected | All versions from 2.0-beta7 to 2.17.0, excluding 2.3.2 and 2.12.4 |
 
 ### Description
 Apache Log4j2 versions 2.0-beta7 through 2.17.0 (excluding security fix releases 2.3.2 and 2.12.4) are vulnerable to
@@ -118,7 +116,7 @@ Apache Log4j2 does not always protect from infinite recursion in lookup evaluati
 | ---------------   | -------- |
 | Severity          | Moderate |
 | Base CVSS Score   | 5.9 (AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H) |
-| Versions Affected | All versions from 2.0-beta9 to 2.16.0, excluding 2.12.3 |
+| Versions Affected | All versions from 2.0-alpha1 to 2.16.0, excluding 2.12.3 |
 
 ### Description
 Apache Log4j2 versions 2.0-alpha1 through 2.16.0, excluding 2.12.3, did not protect from uncontrolled recursion from self-referential lookups.
@@ -141,7 +139,9 @@ Alternatively, this infinite recursion issue can be mitigated in configuration:
 
 * In PatternLayout in the logging configuration, replace Context Lookups like `${ctx:loginId}` or `$${ctx:loginId}` with Thread Context Map patterns (%X, %mdc, or %MDC).
 * Otherwise, in the configuration, remove references to Context Lookups like `${ctx:loginId}` or `$${ctx:loginId}` where they originate
-from sources external to the application such as HTTP headers or user input.
+from sources external to the application such as HTTP headers or user input. Note that this mitigation is insufficient in
+releases older than 2.12.2 (Java 7), and 2.16.0 (Java 8 and later) as the issues fixed in those releases will
+still be present.
 
 Note that only the log4j-core JAR file is impacted by this vulnerability.
 Applications using only the log4j-api JAR file without the log4j-core JAR file are not impacted by this vulnerability.
@@ -192,7 +192,10 @@ It was found that the fix to address [CVE-2021-44228](https://cve.mitre.org/cgi-
 When the logging configuration uses a non-default Pattern Layout with a Context Lookup (for example, $${ctx:loginId}),
 attackers with control over Thread Context Map (MDC) input data can craft malicious input data using a JNDI Lookup pattern,
 resulting in an information leak and remote code execution in some environments and local code execution in all environments;
-remote code execution has been demonstrated on MacOS, Fedora, Arch Linux, and Alpine Linux.
+remote code execution has been demonstrated on macOS, Fedora, Arch Linux, and Alpine Linux. 
+
+Note that this vulnerability is not limited to just the JDNI lookup. Any other Lookup could also be included in a 
+Thread Context Map variable and possibly have private details exposed to anyone with access to the logs.
 
 ### Mitigation
 
@@ -206,6 +209,11 @@ Implement one of the following mitigation techniques:
 
 * Upgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).
 * Otherwise, in any release other than 2.16.0, you may remove the `JndiLookup` class from the classpath: `zip -q -d log4j-core-*.jar org/apache/logging/log4j/core/lookup/JndiLookup.class`
+
+Users are advised that while removing the JndiLookup class prevents a potential RCE from occuring, it still leaves 
+the application vulnerable to other misuse of Lookups in Thread Context Map data. While the mitigations listed below in 
+the history section help in some situations, the only real solution is to upgarde to one of the releases listed in the
+first bullet above (or a newer release).
 
 Users are advised not to enable JNDI in Log4j 2.16.0, since it still allows LDAP connections.
 If the JMS Appender is required, use one of these versions: 2.3.1, 2.12.2, 2.12.3 or 2.17.0:
@@ -284,7 +292,9 @@ Additional vulnerability details discovered independently by Ash Fox of Google, 
 ## <a name="log4j-2.15.0"/> Fixed in Log4j 2.15.0 (Java 8)
 
 [CVE-2021-44228](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228):  Apache Log4j2 JNDI
-features do not protect against attacker controlled LDAP and other JNDI related endpoints.
+features do not protect against attacker controlled LDAP and other JNDI related endpoints. Log4j2 allows 
+Lookup expressions in the data being logged exposing the JNDI vulnerability, as well as other problems, 
+to be exploited by end users whose input is being logged.
 
 |[CVE-2021-44228](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228) | Remote Code Execution |
 | ----------------- | -------- |
@@ -297,7 +307,7 @@ In Apache Log4j2 versions up to and including 2.14.1 (excluding security release
 the JNDI features used in configurations, log messages, and parameters do not
 protect against attacker-controlled LDAP and other JNDI related endpoints.
 An attacker who can control log messages or log message parameters can execute
-arbitrary code loaded from LDAP servers when message lookup substitution is enabled.
+arbitrary code loaded from LDAP servers when message lookup substitution is enabled. 
 
 ### Mitigation
 
@@ -315,6 +325,12 @@ Implement one of the following mitigation techniques:
 
 * Upgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).
 * Otherwise, in any release other than 2.16.0, you may remove the `JndiLookup` class from the classpath: `zip -q -d log4j-core-*.jar org/apache/logging/log4j/core/lookup/JndiLookup.class`
+
+Note that simply removing the JndiLookup only resolves one of the two bugs exposed in CVE-2021-44228. This still 
+allows users to enter lookup strings into input fields and cause them to be evaluated, which can cause StackOverflowExceptions
+or potentially expose private data to anyone provided access to the logs. While the mitigations listed below in the 
+history section help in some situations, the only real solution is to upgarde to one of the releases listed in the 
+first bullet above (or a newer release).
 
 Note that only the log4j-core JAR file is impacted by this vulnerability.
 Applications using only the log4j-api JAR file without the log4j-core JAR file are not impacted by this vulnerability.
@@ -408,7 +424,7 @@ set the `mail.smtp.ssl.checkserveridentity` system property to `true`
 to enable SMTPS hostname verification for all SMTPS mail sessions.
 
 ### Credit
-This issues was discovered by Peter Stöckli.
+This issue was discovered by Peter Stöckli.
 
 ### References
 - [CVE-2020-9488](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-9488)
@@ -491,3 +507,8 @@ it is a configuration that isn't widely used. Moderate vulnerabilities score bet
 All other security flaws are classed as a Low impact. This rating is used for issues that are believed
 to be extremely hard to exploit, or where an exploit gives minimal consequences. Low vulnerabilities
 score between 0.1 and 3.9 on the [CVSS v3 calculator](https://nvd.nist.gov/vuln-metrics/cvss/v3-calculator).
+
+## <a name="cve-creation"></a> CVE creation process
+
+Found security vulnerabilities are subject to voting (by means of [_lazy approval_](https://logging.apache.org/guidelines.html), preferably) in the private [security mailing list](mailto:security@logging.apache.org) before creating a CVE and populating its associated content.
+This procedure involves only the creation of CVEs and blocks neither (vulnerability) fixes, nor releases.

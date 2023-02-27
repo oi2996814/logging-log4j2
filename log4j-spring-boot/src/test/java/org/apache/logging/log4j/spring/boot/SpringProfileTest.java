@@ -22,7 +22,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.ConsoleAppender;
-import org.apache.logging.log4j.test.appender.ListAppender;
+import org.apache.logging.log4j.core.test.appender.ListAppender;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.springframework.mock.env.MockEnvironment;
@@ -43,7 +43,7 @@ public class SpringProfileTest {
     public static void before() {
         loggerContext = (LoggerContext) LogManager.getContext(false);
         env = new MockEnvironment();
-        loggerContext.putObject(Log4j2CloudConfigLoggingSystem.ENVIRONMENT_KEY, env);
+        loggerContext.putObject(Log4j2SpringBootLoggingSystem.ENVIRONMENT_KEY, env);
     }
 
 
